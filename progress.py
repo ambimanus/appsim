@@ -4,19 +4,6 @@ import progressbar.progressbar as pbar
 pip install progressbar-latest
 """
 
-class Progress(object):
-    p = ['|', '/', '--', '\\']
-
-    def __init__(self, divisor=10):
-        self.counter = 0
-        self.divisor = divisor
-
-    def __str__(self):
-        s = Progress.p[(self.counter // self.divisor) % len(Progress.p)]
-        self.counter += 1
-        return s
-
-
 class GeneratorSpeed(pbar.widgets.AbstractWidget):
     def __init__(self):
         self.fmt = 'Speed: %d/s'
@@ -39,3 +26,6 @@ class PBar(pbar.ProgressBar):
             pbar.ProgressBar.update(self, self.currval + 1)
         else:
             pbar.ProgressBar.update(self, value)
+
+    def flush(self):
+        self.fd.write(self._format_line() + '\r')

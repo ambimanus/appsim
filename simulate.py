@@ -1,3 +1,4 @@
+import sys
 import time
 import random
 from datetime import datetime, timedelta
@@ -51,12 +52,16 @@ def create_device(seed):
     # ax.plot_surface(X, Y, Z)
     # plt.show()
 
+    # Hysterese-Korridor
+    T_min, T_max = 273 + 50, 273 + 70
+    device.components.engine.T_min = T_min
+    device.components.engine.T_max = T_max
     # Warmwasserspeicher: SBP 200 E
-    device.components.storage.weight = 1000
+    device.components.storage.weight = 500
     # Bereitschaftsenergieverbrauch
     device.components.storage.loss = 1.5
     # initiale Temperatur zufällig 35-50 °C
-    device.components.storage.T = 273 + rng.uniform(35, 45)
+    device.components.storage.T = rng.uniform(T_min, T_max)
     # DWD Referenz-Witterungsverlauf für Region TRY03
     # (siehe appliancesim/ext/thermal/demand.pxi)
     device.components.heatsink.set_building('TRY03', 'efh')
@@ -64,16 +69,10 @@ def create_device(seed):
     device.components.heatsink.norm_consumption_file = appdata.vdi_4655()
     # DWD Wetterdaten für 2010
     device.components.heatsink.weather_file = appdata.dwd_weather('bremen', 2010)
-    # a = np.load(device.components.heatsink.norm_consumption_file)
-    # import pdb
-    # pdb.set_trace()
-    # Korrektur des Wärme-Jahresverbrauchs (Einheitenproblem --> Ontje FIXME)
-    device.components.heatsink.annual_demand = 40000 / 60
+    # Wärme-Jahresverbrauch
+    device.components.heatsink.annual_demand = 40000
     # Rauschen auf dem VDI-Wärmebedarf
     device.components.heatsink.temp_noise = 2
-    # Hysterese-Korridor
-    device.components.engine.T_min = 273 + 35
-    device.components.engine.T_max = 273 + 45
 
     # Berechnung des Wärmebedarfes (Erklärung von Ontje):
     # vdi 4655 hat basiszeitreihen für 10 typtage für elektrische, heiz und
@@ -113,19 +112,19 @@ def create_sample(device, sample_size, t_start, t_end, density=0.1):
     device = device.copy()
     device.step(t_start)
     device.components.sampler.setpoint_density = density
-    return device.components.sampler.sample(sample_size)
+    return np.array(device.components.sampler.sample(sample_size)) / 1000
 
 
 def plot_sim(t, device, data):
     fig, ax = plt.subplots(2, sharex=True)
 
-    ax[0].plot_date(t, data['P_el'], fmt='-', lw=1, label='P$_{el}$')
-    ax[0].plot_date(t, data['P_th'], fmt='-', lw=1, label='P$_{th}$')
+    ax[0].plot_date(t, data['P_el'], fmt='-', lw=1, label='P$_{el}$ [kW]')
+    ax[0].plot_date(t, data['P_th'], fmt='-', lw=1, label='P$_{th}$ [kW]')
     leg0 = ax[0].legend(bbox_to_anchor=(0., 1.02, 1., .102), loc=3, ncol=4,
                         borderaxespad=0.0, fancybox=False)
 
-    ax[1].plot_date(t, data['T'] - 273, fmt='-', lw=1, label='T')
-    ax[1].plot_date(t, data['T_env'] - 273, fmt='-', lw=1, label='T$_{env}$')
+    ax[1].plot_date(t, data['T'] - 273, fmt='-', lw=1, label='T [\\textdegree C]')
+    ax[1].plot_date(t, data['T_env'], fmt='-', lw=1, label='T$_{env}$')
     T_min = np.array([device.components.engine.T_min for x in t])
     T_max = np.array([device.components.engine.T_max for x in t])
     ax[1].plot_date(t, T_min - 273, fmt='k-', lw=1, label='T$_{min}$')
@@ -159,27 +158,46 @@ def resample(d, resolution):
 
 
 if __name__ == '__main__':
+    sim, sam, export = False, False, False
+    runs = 1
+    if len(sys.argv) == 1 or 'simulate' in sys.argv[1:]:
+        sim = True
+    if 'sample' in sys.argv[1:]:
+        sam = True
+        try:
+            sample_size = int(sys.argv[sys.argv.index('sample') + 1])
+        except:
+            sample_size = 2
+    if 'export' in sys.argv[1:]:
+        export = True
+        try:
+            runs = int(sys.argv[sys.argv.index('export') + 1])
+        except:
+            runs = 1
+
     # Simulationszeit
     start, end = datetime(2010, 4, 1), datetime(2010, 4, 2)
     istart = int(time.mktime(start.timetuple()) // 60)
     iend = int(time.mktime(end.timetuple()) // 60)
 
-    runs = 1
     progress = PBar(runs * (iend - istart)).start()
     for n in range(runs):
-        # Create device
         device = create_device(n)
-        # Simulate
-        data = simulate(device, istart, iend, progress)
-        # Make sample
-        sample = create_sample(device, 100, istart, iend)
-        t = drange(start, end, timedelta(minutes=15))
-        plot_sample(t, sample)
-        # # Export
-        # P_el = resample(data['P_el'], 15)
-        # fn = '/tmp/hp%3d.csv' % n
-        # np.savetxt(fn, P_el, delimiter=',')
-        # # Visualize
-        # t = drange(start, end, timedelta(minutes=1))
-        # plot_sim(t, device, data)
+        if sim:
+            # Simulate
+            data = simulate(device, istart, iend, progress)
+            if export:
+                P_el = resample(data['P_el'], 15)
+                fn = '/tmp/hp%03d.csv' % n
+                np.savetxt(fn, P_el, delimiter=',')
+            else:
+                plot_sim(drange(start, end, timedelta(minutes=1)), device, data)
+        if sam:
+            # Make sample
+            sample = create_sample(device, sample_size, istart, iend)
+            if export:
+                fn = '/tmp/hp%03d_samples.csv' % n
+                np.savetxt(fn, sample, delimiter=',')
+            else:
+                plot_sample(drange(start, end, timedelta(minutes=15)), sample)
 

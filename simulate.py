@@ -51,11 +51,11 @@ def simulate(seed, start, end, progress):
     # plt.show()
 
     # Warmwasserspeicher: SBP 200 E
-    device.components.storage.weight = 200
+    device.components.storage.weight = 1000
     # Bereitschaftsenergieverbrauch
     device.components.storage.loss = 1.5
     # initiale Temperatur zufällig 35-50 °C
-    device.components.storage.T = 273 + rng.uniform(35, 50)
+    device.components.storage.T = 273 + rng.uniform(35, 45)
     # DWD Referenz-Witterungsverlauf für Region TRY03
     # (siehe appliancesim/ext/thermal/demand.pxi)
     device.components.heatsink.set_building('TRY03', 'efh')
@@ -63,10 +63,14 @@ def simulate(seed, start, end, progress):
     device.components.heatsink.norm_consumption_file = appdata.vdi_4655()
     # DWD Wetterdaten für 2010
     device.components.heatsink.weather_file = appdata.dwd_weather('bremen', 2010)
+    # a = np.load(device.components.heatsink.norm_consumption_file)
+    # import pdb
+    # pdb.set_trace()
     # Korrektur des Wärme-Jahresverbrauchs (Einheitenproblem --> Ontje FIXME)
-    device.components.heatsink.annual_demand = 60000
+    device.components.heatsink.annual_demand = 40000 / 60
     # Rauschen auf dem VDI-Wärmebedarf
     device.components.heatsink.temp_noise = 2
+    # Hysterese-Korridor
     device.components.engine.T_min = 273 + 35
     device.components.engine.T_max = 273 + 45
 
@@ -78,22 +82,24 @@ def simulate(seed, start, end, progress):
     # zwischen den temperaturen und pack noch ein rauschen drauf.
 
     # Datenfelder
-    data = np.empty((4, (end - start)))
+    headers = ['P_el', 'P_th', 'T', 'T_env']
+    data = {h: np.empty((end - start,)) for h in headers}
+    data['device'] = device
 
     # Simulation
     for now in range(start, end):
         device.step(now)
         i = now - start
-        data[0][i] = device.components.engine.P_el
-        data[1][i] = device.components.engine.P_th
-        data[2][i] = device.components.storage.T
-        data[3][i] = device.components.heatsink.in_heat
+        data['P_el'][i] = device.components.engine.P_el
+        data['P_th'][i] = device.components.engine.P_th
+        data['T'][i] = device.components.storage.T
+        data['T_env'][i] = device.components.heatsink.T_env
         progress.update()
 
     progress.flush()
-    print()
-    print('heatsink.annual_demand = %.2f' % device.components.heatsink.annual_demand)
-    print('heatsink.in_heat = %.2f' % (sum(data[3])/60.0))
+    # print()
+    # print('heatsink.annual_demand = %.2f' % device.components.heatsink.annual_demand)
+    # print('heatsink.in_heat = %.2f' % (sum(data['in_heat'])/60.0))
 
     return data
 
@@ -115,21 +121,24 @@ if __name__ == '__main__':
     for n in range(runs):
         data = simulate(0, istart, iend, progress)
         # Export
-        P_el = resample(data[0], 15)
+        P_el = resample(data['P_el'], 15)
         fn = '/tmp/hp%3d.csv' % n
         np.savetxt(fn, P_el, delimiter=',')
 
     # Visualisierung
     fig, ax = plt.subplots(2, sharex=True)
-    P_el, P_th, storage_t, in_heat = data
 
-    ax[0].plot_date(t, storage_t - 273.0, fmt='-', lw=1, label='storage T')
-    # ax[0].plot_date(t, in_heat, fmt='-', lw=1, label='storage inheat')
+    ax[0].plot_date(t, data['P_el'], fmt='-', lw=1, label='P$_{el}$')
+    ax[0].plot_date(t, data['P_th'], fmt='-', lw=1, label='P$_{th}$')
     leg0 = ax[0].legend(bbox_to_anchor=(0., 1.02, 1., .102), loc=3, ncol=4,
                         borderaxespad=0.0, fancybox=False)
 
-    ax[1].plot_date(t, P_el, fmt='-', lw=1, label='P$_{el}$')
-    ax[1].plot_date(t, P_th, fmt='-', lw=1, label='P$_{th}$')
+    ax[1].plot_date(t, data['T'] - 273, fmt='-', lw=1, label='T')
+    ax[1].plot_date(t, data['T_env'] - 273, fmt='-', lw=1, label='T$_{env}$')
+    T_min = np.array([data['device'].components.engine.T_min for x in t])
+    T_max = np.array([data['device'].components.engine.T_max for x in t])
+    ax[1].plot_date(t, T_min - 273, fmt='k-', lw=1, label='T$_{min}$')
+    ax[1].plot_date(t, T_max - 273, fmt='k-', lw=1, label='T$_{max}$')
     leg1 = ax[1].legend(bbox_to_anchor=(0., 1.02, 1., .102), loc=3, ncol=4,
                         borderaxespad=0.0, fancybox=False)
 

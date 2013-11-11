@@ -107,12 +107,17 @@ def simulate(device, start, end, progress):
     return data
 
 
-def create_sample(device, sample_size, t_start, t_end, density=0.1):
+def create_sample(device, sample_size, t_start, t_end, progress, density=0.1):
     assert (t_end - t_start) / 15 == 96, '%d (only 96-dimensional samples supported)' % (t_end - t_start)
     device = device.copy()
     device.step(t_start)
     device.components.sampler.setpoint_density = density
-    return np.array(device.components.sampler.sample(sample_size)) / 1000
+    sample = np.array(device.components.sampler.sample(sample_size)) / 1000
+    # Add noise to prevent breaking the SVDD model due to linear dependencies
+    noise = np.abs(np.random.normal(scale=0.0001, size=(sample_size, 96)))
+    progress.update(progress.currval + sample_size)
+
+    return sample + noise
 
 
 def plot_sim(t, device, data):
@@ -180,12 +185,13 @@ if __name__ == '__main__':
     istart = int(time.mktime(start.timetuple()) // 60)
     iend = int(time.mktime(end.timetuple()) // 60)
 
-    progress = PBar(runs * (iend - istart)).start()
+    p_sim = PBar(runs * (iend - istart)).start()
+    p_sam = PBar(runs * sample_size).start()
     for n in range(runs):
         device = create_device(n)
         if sim:
             # Simulate
-            data = simulate(device, istart, iend, progress)
+            data = simulate(device, istart, iend, p_sim)
             if export:
                 P_el = resample(data['P_el'], 15)
                 fn = '/tmp/hp%03d.csv' % n
@@ -194,10 +200,10 @@ if __name__ == '__main__':
                 plot_sim(drange(start, end, timedelta(minutes=1)), device, data)
         if sam:
             # Make sample
-            sample = create_sample(device, sample_size, istart, iend)
+            sample = create_sample(device, sample_size, istart, iend, p_sam)
             if export:
                 fn = '/tmp/hp%03d_samples.csv' % n
                 np.savetxt(fn, sample, delimiter=',')
             else:
                 plot_sample(drange(start, end, timedelta(minutes=15)), sample)
-
+    print()

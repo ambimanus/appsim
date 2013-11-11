@@ -10,11 +10,12 @@ from appliancesim.ext.device import Device, Consumer, SuccessiveSampler
 from appliancesim import data as appdata
 from appliancesim.ext.thermal import HeatDemand
 from heatpumpsim import Storage, Engine, RandomHeatSource
+from chpsim.CHP import Scheduler
 
 from progress import PBar
 
 
-def simulate(seed, start, end, progress):
+def create_device(seed):
     # Reproduzierbarkeit
     rng = random.Random()
     np.random.seed(0)
@@ -22,7 +23,7 @@ def simulate(seed, start, end, progress):
 
     # Erstelle Wärmepumpe
     device = Device('heatpump', 0, [Consumer(), HeatDemand(),
-            RandomHeatSource(), Storage(), Engine(),
+            RandomHeatSource(), Storage(), Engine(), Scheduler(),
             SuccessiveSampler()], seed=seed)
 
     # Stiebel Eltron WPF 10
@@ -81,10 +82,13 @@ def simulate(seed, start, end, progress):
     # wetterdaten um den richtigen typtag zu ermitteln, interpoliere dann noch
     # zwischen den temperaturen und pack noch ein rauschen drauf.
 
+    return device
+
+
+def simulate(device, start, end, progress):
     # Datenfelder
     headers = ['P_el', 'P_th', 'T', 'T_env']
     data = {h: np.empty((end - start,)) for h in headers}
-    data['device'] = device
 
     # Simulation
     for now in range(start, end):
@@ -97,35 +101,22 @@ def simulate(seed, start, end, progress):
         progress.update()
 
     progress.flush()
-    # print()
+    print()
     # print('heatsink.annual_demand = %.2f' % device.components.heatsink.annual_demand)
     # print('heatsink.in_heat = %.2f' % (sum(data['in_heat'])/60.0))
 
     return data
 
 
-def resample(d, resolution):
-    return (d.reshape(d.shape[0]/resolution, resolution).sum(1)/resolution)
+def create_sample(device, sample_size, t_start, t_end, density=0.1):
+    assert (t_end - t_start) / 15 == 96, '%d (only 96-dimensional samples supported)' % (t_end - t_start)
+    device = device.copy()
+    device.step(t_start)
+    device.components.sampler.setpoint_density = density
+    return device.components.sampler.sample(sample_size)
 
 
-if __name__ == '__main__':
-    # Simulationszeit
-    start, end = datetime(2010, 4, 1), datetime(2010, 4, 2)
-    delta = timedelta(minutes=1)
-    t = drange(start, end, delta)
-    istart = int(time.mktime(start.timetuple()) // 60)
-    iend = int(time.mktime(end.timetuple()) // 60)
-
-    runs = 1
-    progress = PBar(runs * (iend - istart)).start()
-    for n in range(runs):
-        data = simulate(0, istart, iend, progress)
-        # Export
-        P_el = resample(data['P_el'], 15)
-        fn = '/tmp/hp%3d.csv' % n
-        np.savetxt(fn, P_el, delimiter=',')
-
-    # Visualisierung
+def plot_sim(t, device, data):
     fig, ax = plt.subplots(2, sharex=True)
 
     ax[0].plot_date(t, data['P_el'], fmt='-', lw=1, label='P$_{el}$')
@@ -135,8 +126,8 @@ if __name__ == '__main__':
 
     ax[1].plot_date(t, data['T'] - 273, fmt='-', lw=1, label='T')
     ax[1].plot_date(t, data['T_env'] - 273, fmt='-', lw=1, label='T$_{env}$')
-    T_min = np.array([data['device'].components.engine.T_min for x in t])
-    T_max = np.array([data['device'].components.engine.T_max for x in t])
+    T_min = np.array([device.components.engine.T_min for x in t])
+    T_max = np.array([device.components.engine.T_max for x in t])
     ax[1].plot_date(t, T_min - 273, fmt='k-', lw=1, label='T$_{min}$')
     ax[1].plot_date(t, T_max - 273, fmt='k-', lw=1, label='T$_{max}$')
     leg1 = ax[1].legend(bbox_to_anchor=(0., 1.02, 1., .102), loc=3, ncol=4,
@@ -148,3 +139,47 @@ if __name__ == '__main__':
     fig.subplots_adjust(left=0.1, right=0.95, top=0.88, bottom=0.2, hspace=0.4)
 
     plt.show()
+
+
+def plot_sample(t, sample):
+    fig, ax = plt.subplots()
+    ax.set_ylabel('P$_{el}$ [kW]')
+
+    for s in sample:
+        ax.plot_date(t, s, fmt='-', lw=1)
+
+    fig.autofmt_xdate()
+    fig.subplots_adjust(left=0.12, right=0.95, top=0.88, bottom=0.2, hspace=0.4)
+
+    plt.show()
+
+
+def resample(d, resolution):
+    return (d.reshape(d.shape[0]/resolution, resolution).sum(1)/resolution)
+
+
+if __name__ == '__main__':
+    # Simulationszeit
+    start, end = datetime(2010, 4, 1), datetime(2010, 4, 2)
+    istart = int(time.mktime(start.timetuple()) // 60)
+    iend = int(time.mktime(end.timetuple()) // 60)
+
+    runs = 1
+    progress = PBar(runs * (iend - istart)).start()
+    for n in range(runs):
+        # Create device
+        device = create_device(n)
+        # Simulate
+        data = simulate(device, istart, iend, progress)
+        # Make sample
+        sample = create_sample(device, 100, istart, iend)
+        t = drange(start, end, timedelta(minutes=15))
+        plot_sample(t, sample)
+        # # Export
+        # P_el = resample(data['P_el'], 15)
+        # fn = '/tmp/hp%3d.csv' % n
+        # np.savetxt(fn, P_el, delimiter=',')
+        # # Visualize
+        # t = drange(start, end, timedelta(minutes=1))
+        # plot_sim(t, device, data)
+

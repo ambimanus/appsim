@@ -10,8 +10,8 @@ from matplotlib.dates import drange
 from appliancesim.ext.device import Device, Consumer, SuccessiveSampler
 from appliancesim import data as appdata
 from appliancesim.ext.thermal import HeatDemand
-from heatpumpsim import Storage, Engine, RandomHeatSource
-from chpsim.CHP import Scheduler
+from heatpumpsim import Engine, RandomHeatSource
+from chpsim.CHP import Storage, Scheduler
 
 from progress import PBar
 
@@ -30,10 +30,10 @@ def create_device(seed):
     # Stiebel Eltron WPF 10
     device.components.engine.characteristics = {
         'setpoints': {
-            'P_el': {'grid': [[35, 50]], 'values': [2.4, 3.2]},
+            'P_el': {'grid': [[35, 50]], 'values': [2400, 3200]},
             'P_th': {
                 'grid': [[-5, 20], [35, 50]],
-                'values': [[8.7, 8.2], [15.8, 14.9]],
+                'values': [[8700, 8200], [15800, 14900]],
             }
         }
     }
@@ -123,8 +123,8 @@ def create_sample(device, sample_size, t_start, t_end, progress, density=0.1):
 def plot_sim(t, device, data):
     fig, ax = plt.subplots(2, sharex=True)
 
-    ax[0].plot_date(t, data['P_el'], fmt='-', lw=1, label='P$_{el}$ [kW]')
-    ax[0].plot_date(t, data['P_th'], fmt='-', lw=1, label='P$_{th}$ [kW]')
+    ax[0].plot_date(t, data['P_el'] / 1000.0, fmt='-', lw=1, label='P$_{el}$ [kW]')
+    ax[0].plot_date(t, data['P_th'] / 1000.0, fmt='-', lw=1, label='P$_{th}$ [kW]')
     leg0 = ax[0].legend(bbox_to_anchor=(0., 1.02, 1., .102), loc=3, ncol=4,
                         borderaxespad=0.0, fancybox=False)
 
@@ -164,21 +164,20 @@ def resample(d, resolution):
 
 if __name__ == '__main__':
     sim, sam, export = False, False, False
-    runs = 1
     if len(sys.argv) == 1 or 'simulate' in sys.argv[1:]:
         sim = True
     if 'sample' in sys.argv[1:]:
         sam = True
-        try:
-            sample_size = int(sys.argv[sys.argv.index('sample') + 1])
-        except:
-            sample_size = 2
     if 'export' in sys.argv[1:]:
         export = True
-        try:
-            runs = int(sys.argv[sys.argv.index('export') + 1])
-        except:
-            runs = 1
+    try:
+        sample_size = int(sys.argv[sys.argv.index('sample') + 1])
+    except:
+        sample_size = 2
+    try:
+        runs = int(sys.argv[sys.argv.index('export') + 1])
+    except:
+        runs = 1
 
     # Simulationszeit
     start, end = datetime(2010, 4, 1), datetime(2010, 4, 2)
@@ -195,7 +194,7 @@ if __name__ == '__main__':
             if export:
                 P_el = resample(data['P_el'], 15)
                 fn = '/tmp/hp%03d.csv' % n
-                np.savetxt(fn, P_el, delimiter=',')
+                np.savetxt(fn, P_el / 1000.0, delimiter=',')
             else:
                 plot_sim(drange(start, end, timedelta(minutes=1)), device, data)
         if sam:
@@ -203,7 +202,7 @@ if __name__ == '__main__':
             sample = create_sample(device, sample_size, istart, iend, p_sam)
             if export:
                 fn = '/tmp/hp%03d_samples.csv' % n
-                np.savetxt(fn, sample, delimiter=',')
+                np.savetxt(fn, sample / 1000.0, delimiter=',')
             else:
                 plot_sample(drange(start, end, timedelta(minutes=15)), sample)
     print()

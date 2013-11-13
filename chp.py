@@ -23,7 +23,8 @@ def create_device(seed, id, model='Vaillant EcoPower 3.0'):
     #   args: P_el_min, P_el_max, P_th_min, P_th_max, modulation steps
     engine = device.components.engine
     if model == 'Vaillant EcoPower 1.0':
-        engine.set_equidistant_steps(1000, 1000, 2500, 2500, 1)
+        # no modulation, set steps directly
+        engine.steps = [(0, 0), (1000, 2500)]
     elif model == 'Vaillant EcoPower 3.0':
         # Drehzahl: 1400-3600 in 100er Schritten modulierbar --> 22 Stufen
         engine.set_equidistant_steps(1500, 3000, 4700, 8000, 22)

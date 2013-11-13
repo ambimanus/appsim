@@ -9,7 +9,7 @@ from heatpumpsim import Engine, RandomHeatSource
 from chpsim.CHP import Storage, Scheduler
 
 
-def create_device(seed, id):
+def create_device(seed, id, model='Stiebel Eltron WPF 10'):
     # Reproduzierbarkeit
     rng = random.Random()
     np.random.seed(seed)
@@ -20,17 +20,81 @@ def create_device(seed, id):
             RandomHeatSource(), Storage(), Engine(), Scheduler(),
             SuccessiveSampler()], seed=seed)
 
-    # Stiebel Eltron WPF 10
-    # - power curves (el and th) according to data sheet of the device
-    device.components.engine.characteristics = {
-        'setpoints': {
-            'P_el': {'grid': [[35, 50]], 'values': [2400, 3200]},
-            'P_th': {
-                'grid': [[-5, 20], [35, 50]],
-                'values': [[8700, 8200], [15800, 14900]],
+    # Leistungsdaten
+    #   args: power curves (el and th) according to data sheet of the device
+    if model == 'Weishaupt WWP S 24':
+        device.components.engine.characteristics = {
+            'setpoints': {
+                'P_el': {'grid': [[35, 50]], 'values': [5800, 7800]},
+                'P_th': {
+                    'grid': [[-5, 25], [35, 50]],
+                    'values': [[21100, 20000], [41500, 39000]],
+                }
             }
         }
-    }
+    elif model == 'Weishaupt WWP S 30':
+        device.components.engine.characteristics = {
+            'setpoints': {
+                'P_el': {
+                    'grid': [[35, 45, 55]],
+                    'values': [7500, 9000, 11000]
+                },
+                'P_th': {
+                    'grid': [[-5, 25], [35, 45, 55]],
+                    'values': [[26500, 25500, 24500], [54500, 53000, 51000]],
+                }
+            }
+        }
+    elif model == 'Weishaupt WWP S 37':
+        device.components.engine.characteristics = {
+            'setpoints': {
+                'P_el': {'grid': [[35, 50]], 'values': [8500, 11500]},
+                'P_th': {
+                    'grid': [[-5, 25], [35, 50]],
+                    'values': [[32000, 29500], [63500, 61500]],
+                }
+            }
+        }
+    elif model == 'Stiebel Eltron WPF 5':
+        device.components.engine.characteristics = {
+            'setpoints': {
+                'P_el': {'grid': [[35, 50]], 'values': [2000, 2400]},
+                'P_th': {
+                    'grid': [[-5, 20], [35, 50]],
+                    'values': [[5900, 5600], [8900, 8400]],
+                }
+            }
+        }
+    elif model == 'Stiebel Eltron WPF 7':
+        device.components.engine.characteristics = {
+            'setpoints': {
+                'P_el': {'grid': [[35, 50]], 'values': [2500, 3100]},
+                'P_th': {
+                    'grid': [[-5, 20], [35, 50]],
+                    'values': [[6500, 6300], [11900, 11300]],
+                }
+            }
+        }
+    elif model == 'Stiebel Eltron WPF 10':
+        device.components.engine.characteristics = {
+            'setpoints': {
+                'P_el': {'grid': [[35, 50]], 'values': [2400, 3200]},
+                'P_th': {
+                    'grid': [[-5, 20], [35, 50]],
+                    'values': [[8700, 8200], [15800, 14900]],
+                }
+            }
+        }
+    elif model == 'Stiebel Eltron WPF 13':
+        device.components.engine.characteristics = {
+            'setpoints': {
+                'P_el': {'grid': [[35, 50]], 'values': [4200, 5200]},
+                'P_th': {
+                    'grid': [[-5, 20], [35, 50]],
+                    'values': [[11600, 11200], [21300, 20200]],
+                }
+            }
+        }
     # from heatpumpsim import Interpolator
     # from mpl_toolkits.mplot3d import Axes3D
     # interp = Interpolator(*device.components.engine.P_th_characteristic)

@@ -102,20 +102,20 @@ if __name__ == '__main__':
     except:
         sample_size = 2
     try:
-        runs = int(sys.argv[sys.argv.index('export') + 1])
+        devices = int(sys.argv[sys.argv.index('export') + 1])
     except:
-        runs = 1
+        devices = 1
 
     # Simulationszeit
-    start, end = datetime(2010, 4, 1), datetime(2010, 4, 2)
+    start, end = datetime(2010, 4, 1), datetime(2010, 4, 8)
     istart = int(time.mktime(start.timetuple()) // 60)
     iend = int(time.mktime(end.timetuple()) // 60)
 
-    p_sim = PBar(runs * (iend - istart)).start()
-    p_sam = PBar(runs * sample_size).start()
-    for n in range(runs):
-        # device = chp.create_device(n, n)
-        device = hp.create_device(n, n)
+    p_sim = PBar(devices * (iend - istart)).start()
+    p_sam = PBar(devices * sample_size).start()
+    for n in range(devices):
+        device = chp.create_device(n, n)
+        # device = hp.create_device(n, n)
         if sim:
             # Simulate
             data = simulate(device, istart, iend, p_sim)

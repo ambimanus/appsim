@@ -21,6 +21,7 @@ def create_device(seed, id):
             SuccessiveSampler()], seed=seed)
 
     # Stiebel Eltron WPF 10
+    # - power curves (el and th) according to data sheet of the device
     device.components.engine.characteristics = {
         'setpoints': {
             'P_el': {'grid': [[35, 50]], 'values': [2400, 3200]},
@@ -63,7 +64,11 @@ def create_device(seed, id):
     # DWD Wetterdaten für 2010
     device.components.heatsink.weather_file = appdata.dwd_weather('bremen', 2010)
     # Wärme-Jahresverbrauch
-    device.components.heatsink.annual_demand = 40000
+    # EFH: >15000
+    # ZFH: >25000
+    # MFH: >45000
+    # HH: >150000
+    device.components.heatsink.annual_demand = 20000
     # Rauschen auf dem VDI-Wärmebedarf
     device.components.heatsink.temp_noise = 2
 

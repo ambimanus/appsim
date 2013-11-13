@@ -7,81 +7,8 @@ import numpy as np
 from matplotlib import pyplot as plt
 from matplotlib.dates import drange
 
-from appliancesim.ext.device import Device, Consumer, SuccessiveSampler
-from appliancesim import data as appdata
-from appliancesim.ext.thermal import HeatDemand
-from heatpumpsim import Engine, RandomHeatSource
-from chpsim.CHP import Storage, Scheduler
-
+import chp, hp
 from progress import PBar
-
-
-def create_device(seed):
-    # Reproduzierbarkeit
-    rng = random.Random()
-    np.random.seed(0)
-    rng.seed(0)
-
-    # Erstelle Wärmepumpe
-    device = Device('heatpump', 0, [Consumer(), HeatDemand(),
-            RandomHeatSource(), Storage(), Engine(), Scheduler(),
-            SuccessiveSampler()], seed=seed)
-
-    # Stiebel Eltron WPF 10
-    device.components.engine.characteristics = {
-        'setpoints': {
-            'P_el': {'grid': [[35, 50]], 'values': [2400, 3200]},
-            'P_th': {
-                'grid': [[-5, 20], [35, 50]],
-                'values': [[8700, 8200], [15800, 14900]],
-            }
-        }
-    }
-    # from heatpumpsim import Interpolator
-    # from mpl_toolkits.mplot3d import Axes3D
-    # interp = Interpolator(*device.components.engine.P_th_characteristic)
-    # ax = plt.subplot(1, 1, 1, projection='3d')
-    # ax.scatter(*interp.support_grid())
-    # Z = []
-    # X, Y = np.linspace(0, 50, 20), np.linspace(0, 50, 20)
-    # for y in Y:
-    #     Z.append([])
-    #     for x in X:
-    #         Z[-1].append(interp(x, y))
-    # X, Y = np.meshgrid(X, Y)
-    # ax.plot_surface(X, Y, Z)
-    # plt.show()
-
-    # Hysterese-Korridor
-    T_min, T_max = 273 + 50, 273 + 70
-    device.components.engine.T_min = T_min
-    device.components.engine.T_max = T_max
-    # Warmwasserspeicher: SBP 200 E
-    device.components.storage.weight = 500
-    # Bereitschaftsenergieverbrauch
-    device.components.storage.loss = 1.5
-    # initiale Temperatur zufällig 35-50 °C
-    device.components.storage.T = rng.uniform(T_min, T_max)
-    # DWD Referenz-Witterungsverlauf für Region TRY03
-    # (siehe appliancesim/ext/thermal/demand.pxi)
-    device.components.heatsink.set_building('TRY03', 'efh')
-    # VDI Referenzlastprofil für KWK in EFH/MFH
-    device.components.heatsink.norm_consumption_file = appdata.vdi_4655()
-    # DWD Wetterdaten für 2010
-    device.components.heatsink.weather_file = appdata.dwd_weather('bremen', 2010)
-    # Wärme-Jahresverbrauch
-    device.components.heatsink.annual_demand = 40000
-    # Rauschen auf dem VDI-Wärmebedarf
-    device.components.heatsink.temp_noise = 2
-
-    # Berechnung des Wärmebedarfes (Erklärung von Ontje):
-    # vdi 4655 hat basiszeitreihen für 10 typtage für elektrische, heiz und
-    # warmwasserlast. für die zeitreihen sind je nach klimazone gewichte
-    # angegeben. ich benutze die temperaturen und bedeckungsgrad aus den
-    # wetterdaten um den richtigen typtag zu ermitteln, interpoliere dann noch
-    # zwischen den temperaturen und pack noch ein rauschen drauf.
-
-    return device
 
 
 def simulate(device, start, end, progress):
@@ -108,16 +35,16 @@ def simulate(device, start, end, progress):
 
 
 def create_sample(device, sample_size, t_start, t_end, progress, density=0.1):
-    assert (t_end - t_start) / 15 == 96, '%d (only 96-dimensional samples supported)' % (t_end - t_start)
     device = device.copy()
     device.step(t_start)
     device.components.sampler.setpoint_density = density
-    sample = np.array(device.components.sampler.sample(sample_size)) / 1000
+    d = (t_end - t_start) / 15
+    sample = np.array(device.components.sampler.sample(sample_size, duration=d))
     # Add noise to prevent breaking the SVDD model due to linear dependencies
     noise = np.abs(np.random.normal(scale=0.0001, size=(sample_size, 96)))
     progress.update(progress.currval + sample_size)
 
-    return sample + noise
+    return (sample / 1000) + noise
 
 
 def plot_sim(t, device, data):
@@ -187,7 +114,8 @@ if __name__ == '__main__':
     p_sim = PBar(runs * (iend - istart)).start()
     p_sam = PBar(runs * sample_size).start()
     for n in range(runs):
-        device = create_device(n)
+        # device = chp.create_device(n, n)
+        device = hp.create_device(n, n)
         if sim:
             # Simulate
             data = simulate(device, istart, iend, p_sim)

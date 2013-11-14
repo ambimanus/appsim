@@ -6,22 +6,6 @@ import chpsim.CHP as chp
 import heatpumpsim as hp
 
 
-CHP_MODELS = ['Vaillant EcoPower 1.0',
-              'Vaillant EcoPower 3.0',
-              'Vaillant EcoPower 4.7',
-              'Vaillant EcoPower 20.0',
-              ]
-
-HP_MODELS = ['Weishaupt WWP S 24',
-             'Weishaupt WWP S 30',
-             'Weishaupt WWP S 37',
-             'Stiebel Eltron WPF 5',
-             'Stiebel Eltron WPF 7',
-             'Stiebel Eltron WPF 10',
-             'Stiebel Eltron WPF 13',
-             ]
-
-
 def ecopower_1(seed, id):
     return create_device(seed, id, model='Vaillant EcoPower 1.0',
         T_min=273+50, T_max=273+70, storage_weight=500, storage_loss=1.5,
@@ -88,12 +72,28 @@ def wwp_s_37(seed, id):
         annual_demand=90000, T_noise=2)
 
 
+CHP_MODELS = {'Vaillant EcoPower 1.0': ecopower_1,
+              'Vaillant EcoPower 3.0': ecopower_3,
+              'Vaillant EcoPower 4.7': ecopower_4,
+              'Vaillant EcoPower 20.0': ecopower_20,
+              }
+
+HP_MODELS = {'Stiebel Eltron WPF 5': se_wpf_5,
+             'Stiebel Eltron WPF 7': se_wpf_7,
+             'Stiebel Eltron WPF 10': se_wpf_10,
+             'Stiebel Eltron WPF 13': se_wpf_13,
+             'Weishaupt WWP S 24': wwp_s_24,
+             'Weishaupt WWP S 30': wwp_s_30,
+             'Weishaupt WWP S 37': wwp_s_37,
+             }
+
+
 def create_device(seed, id, model, T_min, T_max, storage_weight, storage_loss,
                   annual_demand, T_noise):
     # # Reproduzierbarkeit
     # np.random.seed(seed)
 
-    if model in CHP_MODELS:
+    if model in list(CHP_MODELS.keys()):
         # Erstelle BHKW
         device = Device('chp', id, [Consumer(), HeatDemand(), Storage(),
                 chp.Engine(), Scheduler(), chp.StubBoostHeater(),
@@ -103,7 +103,7 @@ def create_device(seed, id, model, T_min, T_max, storage_weight, storage_loss,
         # initiale Werte für Verlaufs-Schätzer
         # device.components.storage.T_env = 18
         # device.components.engine.T_delta = 0
-    elif model in HP_MODELS:
+    elif model in list(HP_MODELS.keys()):
         # Erstelle Wärmepumpe
         device = Device('heatpump', id, [Consumer(), HeatDemand(),
                 hp.RandomHeatSource(), Storage(), hp.Engine(), Scheduler(),
@@ -130,39 +130,6 @@ def create_device(seed, id, model, T_min, T_max, storage_weight, storage_loss,
 
     # Leistungsdaten Wärmepumpe
     #   args: power curves (el and th) according to data sheet of the device
-    elif model == 'Weishaupt WWP S 24':
-        device.components.engine.characteristics = {
-            'setpoints': {
-                'P_el': {'grid': [[35, 50]], 'values': [5800, 7800]},
-                'P_th': {
-                    'grid': [[-5, 25], [35, 50]],
-                    'values': [[21100, 20000], [41500, 39000]],
-                }
-            }
-        }
-    elif model == 'Weishaupt WWP S 30':
-        device.components.engine.characteristics = {
-            'setpoints': {
-                'P_el': {
-                    'grid': [[35, 45, 55]],
-                    'values': [7500, 9000, 11000]
-                },
-                'P_th': {
-                    'grid': [[-5, 25], [35, 45, 55]],
-                    'values': [[26500, 25500, 24500], [54500, 53000, 51000]],
-                }
-            }
-        }
-    elif model == 'Weishaupt WWP S 37':
-        device.components.engine.characteristics = {
-            'setpoints': {
-                'P_el': {'grid': [[35, 50]], 'values': [8500, 11500]},
-                'P_th': {
-                    'grid': [[-5, 25], [35, 50]],
-                    'values': [[32000, 29500], [63500, 61500]],
-                }
-            }
-        }
     elif model == 'Stiebel Eltron WPF 5':
         device.components.engine.characteristics = {
             'setpoints': {
@@ -200,6 +167,39 @@ def create_device(seed, id, model, T_min, T_max, storage_weight, storage_loss,
                 'P_th': {
                     'grid': [[-5, 20], [35, 50]],
                     'values': [[11600, 11200], [21300, 20200]],
+                }
+            }
+        }
+    elif model == 'Weishaupt WWP S 24':
+        device.components.engine.characteristics = {
+            'setpoints': {
+                'P_el': {'grid': [[35, 50]], 'values': [5800, 7800]},
+                'P_th': {
+                    'grid': [[-5, 25], [35, 50]],
+                    'values': [[21100, 20000], [41500, 39000]],
+                }
+            }
+        }
+    elif model == 'Weishaupt WWP S 30':
+        device.components.engine.characteristics = {
+            'setpoints': {
+                'P_el': {
+                    'grid': [[35, 45, 55]],
+                    'values': [7500, 9000, 11000]
+                },
+                'P_th': {
+                    'grid': [[-5, 25], [35, 45, 55]],
+                    'values': [[26500, 25500, 24500], [54500, 53000, 51000]],
+                }
+            }
+        }
+    elif model == 'Weishaupt WWP S 37':
+        device.components.engine.characteristics = {
+            'setpoints': {
+                'P_el': {'grid': [[35, 50]], 'values': [8500, 11500]},
+                'P_th': {
+                    'grid': [[-5, 25], [35, 50]],
+                    'values': [[32000, 29500], [63500, 61500]],
                 }
             }
         }

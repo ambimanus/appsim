@@ -7,7 +7,7 @@ import numpy as np
 from matplotlib import pyplot as plt
 from matplotlib.dates import drange
 
-import chp, hp
+import device_factory
 from progress import PBar
 
 
@@ -114,8 +114,7 @@ if __name__ == '__main__':
     p_sim = PBar(devices * (iend - istart)).start()
     p_sam = PBar(devices * sample_size).start()
     for n in range(devices):
-        device = chp.create_device(n, n)
-        # device = hp.create_device(n, n)
+        device = device_factory.wwp_s_37(n, n)
         if sim:
             # Simulate
             data = simulate(device, istart, iend, p_sim)

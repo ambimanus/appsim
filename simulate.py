@@ -11,7 +11,7 @@ import device_factory
 from progress import PBar
 
 
-def simulate(device, start, end, progress):
+def simulate(device, start, end, progress, newline=False):
     # Datenfelder
     headers = ['P_el', 'P_th', 'T', 'T_env']
     data = {h: np.empty((end - start,)) for h in headers}
@@ -27,7 +27,8 @@ def simulate(device, start, end, progress):
         progress.update()
 
     progress.flush()
-    print()
+    if newline:
+        print()
     # print('heatsink.annual_demand = %.2f' % device.components.heatsink.annual_demand)
     # print('heatsink.in_heat = %.2f' % (sum(data['in_heat'])/60.0))
 
@@ -41,7 +42,7 @@ def create_sample(device, sample_size, t_start, t_end, progress, density=0.1):
     d = (t_end - t_start) / 15
     sample = np.array(device.components.sampler.sample(sample_size, duration=d))
     # Add noise to prevent breaking the SVDD model due to linear dependencies
-    noise = np.abs(np.random.normal(scale=0.0001, size=(sample_size, 96)))
+    noise = np.abs(np.random.normal(scale=0.0001, size=(sample_size, d)))
     progress.update(progress.currval + sample_size)
 
     return (sample / 1000) + noise
@@ -89,6 +90,23 @@ def resample(d, resolution):
     return (d.reshape(d.shape[0]/resolution, resolution).sum(1)/resolution)
 
 
+def run(sc):
+    p_sim = PBar(len(sc.devices) * (sc.i_block_start - sc.i_pre)).start()
+    p_sam = PBar(len(sc.devices) * sc.sample_size).start()
+
+    sim_data = []
+    sample_data = []
+    for d in sc.devices:
+        # Pre-Simulation
+        simulate(d, sc.i_pre, sc.i_start, p_sim)
+        # Simulation
+        sim_data.append(simulate(d, sc.i_start, sc.i_block_start, p_sim))
+        # Sampling
+        sample_data.append(create_sample(d, sc.sample_size, sc.i_block_start,
+                                         sc.i_block_end, p_sam))
+    return sim_data, sample_data
+
+
 if __name__ == '__main__':
     sim, sam, export = False, False, False
     if len(sys.argv) == 1 or 'simulate' in sys.argv[1:]:
@@ -117,7 +135,7 @@ if __name__ == '__main__':
         device = device_factory.wwp_s_37(n, n)
         if sim:
             # Simulate
-            data = simulate(device, istart, iend, p_sim)
+            data = simulate(device, istart, iend, p_sim, newline=True)
             if export:
                 P_el = resample(data['P_el'], 15)
                 fn = '/tmp/hp%03d.csv' % n

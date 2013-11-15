@@ -73,6 +73,31 @@ class ScenarioEncoder(json.JSONEncoder):
         return json.JSONEncoder.default(self, obj)
 
 
+class Test(Scenario):
+
+    def __init__(self, seed):
+        self.t_pre = datetime(2010, 4, 1)
+        self.t_start = datetime(2010, 4, 2)
+        self.t_block_start = datetime(2010, 4, 2, 12)
+        self.t_block_end = datetime(2010, 4, 2, 13)
+        self.t_end = datetime(2010, 4, 3)
+
+        self.sample_size = 100
+        self.seed = seed
+        self.rnd = random.Random(seed)
+        self.device_templates = [
+            ('Vaillant EcoPower 1.0', 1),
+            ('Vaillant EcoPower 3.0', 1),
+            # ('Stiebel Eltron WPF 10', 1),     # save_state not yet implemented
+        ]
+
+        self.state_files = []
+        self.sched_file = None
+
+        self._make_timestamps()
+        self._make_devices()
+
+
 class Large(Scenario):
 
     def __init__(self, seed):
@@ -99,22 +124,104 @@ class Large(Scenario):
             ('Weishaupt WWP S 37', 1),
         ]
 
+        self.state_files = []
+        self.sched_file = None
+
         self._make_timestamps()
         self._make_devices()
 
 
 if __name__ == '__main__':
-    sc = Large(1)
+    sc = Test(0)
     sc.save_JSON('/tmp/sc.json')
 
     sc1 = Scenario()
     sc1.load_JSON('/tmp/sc.json')
 
-    import simulate
-    sim_data, sample_data = simulate.run(sc1)
-    print()
-    print(len(sim_data), len(sample_data))
-    for d in sim_data:
-        print(d['P_el'].shape)
-    for d in sample_data:
-        print(d.shape)
+    def stats(data, samples=None):
+        print(data.shape)
+        if samples is not None:
+            assert len(data) == len(samples)
+            for s in samples:
+                print(s.shape)
+
+    # Data
+    import numpy as np
+    m, q = len(sc1.devices), sc1.i_end - sc1.i_start
+    ctrl = np.empty((m, 4, q))
+
+    import simulator
+    # Uncontrolled: full
+    unctrl = simulator.run_unctrl(sc1)
+    # Uncontrolled: pre
+    sim_data_pre, sample_data = simulator.run_pre(sc1)
+    ctrl[:,:,:sc1.i_block_start - sc1.i_start] = sim_data_pre
+    # Controlled
+    from tempfile import NamedTemporaryFile
+    sched = np.zeros((len(sc1.devices), (sc1.i_block_end - sc1.i_block_start) // 15))
+    tmpf = NamedTemporaryFile(mode='wb', dir='/tmp', delete=False)
+    np.save(tmpf, sched)
+    tmpf.close()
+    sc1.sched_file = tmpf.name
+    sim_data_sched = simulator.run_schedule(sc1)
+    ctrl[:,:,sc1.i_block_start - sc1.i_start:sc1.i_block_end - sc1.i_start] = sim_data_sched
+    # Uncontrolled: post
+    ctrl[:,:,sc1.i_block_end - sc1.i_start:sc1.i_end - sc1.i_start] = simulator.run_post(sc1)
+
+
+    # Plot
+    from datetime import timedelta
+    from matplotlib import pyplot as plt
+    from matplotlib.dates import drange
+
+    t = drange(sc1.t_start, sc1.t_end, timedelta(minutes=1))
+
+    for d_unctrl, d_ctrl in zip(unctrl, ctrl):
+        fig, ax = plt.subplots(2, sharex=True)
+        ax[0].set_ylabel('P$_{el}$ [kW]')
+        ax[0].set_ylim(-0.01, 2.0)
+        ax[0].plot_date(t, d_unctrl[0] / 1000.0, fmt='-', lw=1, label='unctrl')
+        ax[0].plot_date(t, d_ctrl[0] / 1000.0, fmt='-', lw=1, label='ctrl')
+        leg0 = ax[0].legend(bbox_to_anchor=(0., 1.02, 1., .102), loc=3, ncol=4,
+                            borderaxespad=0.0, fancybox=False)
+
+        ax[1].set_ylabel('T$_{storage}$ [\\textdegree C]')
+        ax[1].plot_date(t, d_unctrl[2] - 273.0, fmt='-', lw=1, label='unctrl')
+        ax[1].plot_date(t, d_ctrl[2] - 273.0, fmt='-', lw=1, label='ctrl')
+        leg1 = ax[1].legend(bbox_to_anchor=(0., 1.02, 1., .102), loc=3, ncol=4,
+                            borderaxespad=0.0, fancybox=False)
+
+        fig.autofmt_xdate()
+        for label in leg0.get_texts() + leg1.get_texts():
+            label.set_fontsize('x-small')
+        fig.subplots_adjust(left=0.1, right=0.95, top=0.88, bottom=0.2, hspace=0.4)
+
+    # ax[1].plot_date(t, data['T'] - 273, fmt='-', lw=1, label='T [\\textdegree C]')
+    # ax[1].plot_date(t, data['T_env'], fmt='-', lw=1, label='T$_{env}$')
+    # T_min = np.array([device.components.engine.T_min for x in t])
+    # T_max = np.array([device.components.engine.T_max for x in t])
+    # ax[1].plot_date(t, T_min - 273, fmt='k-', lw=1, label='T$_{min}$')
+    # ax[1].plot_date(t, T_max - 273, fmt='k-', lw=1, label='T$_{max}$')
+    # leg1 = ax[1].legend(bbox_to_anchor=(0., 1.02, 1., .102), loc=3, ncol=4,
+    #                     borderaxespad=0.0, fancybox=False)
+
+    plt.show()
+
+
+    # def plot_sample(t, sample):
+    #     fig, ax = plt.subplots()
+    #     ax.set_ylabel('P$_{el}$ [kW]')
+
+    #     for s in sample:
+    #         ax.plot_date(t, s, fmt='-', lw=1)
+
+    #     fig.autofmt_xdate()
+    #     fig.subplots_adjust(left=0.12, right=0.95, top=0.88, bottom=0.2, hspace=0.4)
+
+    #     plt.show()
+
+
+    # def resample(d, resolution):
+    #     return (d.reshape(d.shape[0]/resolution, resolution).sum(1)/resolution)
+
+

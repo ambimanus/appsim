@@ -90,9 +90,6 @@ HP_MODELS = {'Stiebel Eltron WPF 5': se_wpf_5,
 
 def create_device(seed, id, model, T_min, T_max, storage_weight, storage_loss,
                   annual_demand, T_noise):
-    # # Reproduzierbarkeit
-    # np.random.seed(seed)
-
     if model in list(CHP_MODELS.keys()):
         # Erstelle BHKW
         device = Device('chp', id, [Consumer(), HeatDemand(), Storage(),

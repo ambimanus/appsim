@@ -74,16 +74,16 @@ def run_pre(sc):
         simulate(d, sc.i_pre, sc.i_start, p_sim)
         # Simulation
         sim_data.append(simulate(d, sc.i_start, sc.i_block_start, p_sim))
-        # Sampling
-        sample_data.append(create_sample(d, sc.sample_size, sc.i_block_start,
-                                         sc.i_block_end, p_sam))
-        # Save states
+        # Save state
         packer = xdrlib.Packer()
         d.save_state(packer)
         tmpf = NamedTemporaryFile(mode='wb', dir='/tmp', delete=False)
         tmpf.write(packer.get_buffer())
         tmpf.close()
         sc.state_files.append(tmpf.name)
+        # Sampling
+        sample_data.append(create_sample(d, sc.sample_size, sc.i_block_start,
+                                         sc.i_block_end, p_sam))
     print()
     return np.array(sim_data), sample_data
 

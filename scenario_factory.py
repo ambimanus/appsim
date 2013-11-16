@@ -28,11 +28,9 @@ class Scenario(object):
                           self.t_block_end, self.t_end)]
 
 
-    def load_JSON(self, filename):
-        # Read file
-        with open(filename, 'r') as fp:
-            js = json.load(fp)
-
+    def from_JSON(self, js):
+        if type(js) == str:
+            js = json.loads(js)
         # Import data
         self.__dict__ = js
 
@@ -46,12 +44,19 @@ class Scenario(object):
         self._make_devices()
 
 
+    def load_JSON(self, filename):
+        # Read file
+        with open(filename, 'r') as fp:
+            js = json.load(fp)
+
+        self.from_JSON(js)
+
+
     def to_JSON(self):
-        d = self.__dict__
-        if 'devices' in d:
-            del d['devices']
-        if 'rnd' in d:
-            del d['rnd']
+        d = dict(self.__dict__)
+        for k in list(d.keys()):
+            if k == 'devices' or k == 'rnd' or k[:2] == 'i_':
+                del d[k]
 
         return json.dumps(d, indent=2, cls=ScenarioEncoder)
 
@@ -77,10 +82,10 @@ class Test(Scenario):
 
     def __init__(self, seed):
         self.title = 'Test'
-        self.t_pre = datetime(2010, 4, 3)
+        self.t_pre = datetime(2010, 4, 2)
         self.t_start = datetime(2010, 4, 3)
-        self.t_block_start = datetime(2010, 4, 4)
-        self.t_block_end = datetime(2010, 4, 4)
+        self.t_block_start = datetime(2010, 4, 3, 11)
+        self.t_block_end = datetime(2010, 4, 3, 14)
         self.t_end = datetime(2010, 4, 4)
 
         self.sample_size = 100
@@ -89,7 +94,7 @@ class Test(Scenario):
         self.device_templates = [
             ('Vaillant EcoPower 1.0', 1),
             # ('Vaillant EcoPower 3.0', 1),
-            # ('Stiebel Eltron WPF 10', 1),     # save_state not yet implemented
+            ('Stiebel Eltron WPF 10', 1),
         ]
 
         self.state_files = []
@@ -144,6 +149,9 @@ if __name__ == '__main__':
     # sc1.load_JSON('/tmp/sc.json')
 
     sc, sc1 = Test(0), Test(0)
+    print(sc)
+    import sys
+    sys.exit()
 
     def stats(data, samples=None):
         print(data.shape)
@@ -189,7 +197,8 @@ if __name__ == '__main__':
     for d_unctrl, d_ctrl in zip(unctrl, ctrl):
         fig, ax = plt.subplots(2, sharex=True)
         ax[0].set_ylabel('P$_{el}$ [kW]')
-        ax[0].set_ylim(-0.01, 2.0)
+        ymax = max(d_unctrl[0].max(), d_ctrl[0].max()) / 1000.0
+        ax[0].set_ylim(-0.01, ymax + (ymax * 0.1))
         ax[0].plot_date(t, d_unctrl[0] / 1000.0, fmt='-', lw=1, label='unctrl')
         ax[0].plot_date(t, d_ctrl[0] / 1000.0, fmt='-', lw=1, label='ctrl')
         leg0 = ax[0].legend(bbox_to_anchor=(0., 1.02, 1., .102), loc=3, ncol=4,

@@ -1,14 +1,9 @@
-import sys
 import os
-import time
-import random
 import xdrlib
-from datetime import datetime, timedelta
 from tempfile import NamedTemporaryFile
 
 import numpy as np
 
-import device_factory
 from progress import PBar
 
 
@@ -27,6 +22,10 @@ def simulate(device, start, end, progress, newline=False):
         data[3][i] = device.components.heatsink.T_env
         progress.update()
 
+    if device.typename == 'heatpump':
+        # This is a consumer, so negate P_el
+        data[0] = data[0] * (-1.0)
+
     progress.flush()
     if newline:
         print()
@@ -41,10 +40,17 @@ def create_sample(device, sample_size, t_start, t_end, progress, density=0.1):
     d = (t_end - t_start) / 15
     sample = np.array(device.components.sampler.sample(sample_size, duration=d))
     # Add noise to prevent breaking the SVDD model due to linear dependencies
+    np.random.seed(device.random.rand_int())
     noise = np.abs(np.random.normal(scale=0.0001, size=(sample_size, d)))
-    progress.update(progress.currval + sample_size)
 
-    return (sample / 1000) + noise
+    sample = (sample / 1000) + noise
+
+    if device.typename == 'heatpump':
+        # This is a consumer, so negate the sample
+        sample = sample * (-1.0)
+
+    progress.update(progress.currval + sample_size)
+    return sample
 
 
 def run_unctrl(sc):

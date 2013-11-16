@@ -1,7 +1,7 @@
 #!/bin/bash
 
 abort() {
-  if [ $1 -eq 1 ]; then
+  if [ $1 -ne 0 ]; then
     echo "Error, aborting."
     exit 1
   fi
@@ -34,6 +34,17 @@ abort $?
 python run_unctrl.py "$SC_FILE"
 abort $?
 python run_pre.py "$SC_FILE"
+abort $?
+
+source /home/chh/.virtualenv/jpype/bin/activate
+python ../crystal-jpype/src/appsim.py "$SC_FILE"
+abort $?
+
+source /home/chh/.virtualenv/appsim/bin/activate
+abort $?
+python run_schedule.py "$SC_FILE"
+abort $?
+python run_post.py "$SC_FILE"
 abort $?
 
 echo "Simulation done, see $(dirname $SC_FILE)"

@@ -14,11 +14,16 @@ sc.load_JSON(sc_file)
 sc.run_pre_ts = datetime.datetime.now()
 
 d = os.path.dirname(sc_file)
-dfn = str(os.path.join(d, '.'.join((str(sc.seed), 'pre', 'npy'))))
-if os.path.exists(dfn):
-    raise RuntimeError('File already exists: %s' % dfn)
+sim_dfn = str(os.path.join(d, '.'.join((str(sc.seed), 'pre', 'npy'))))
+if os.path.exists(sim_dfn):
+    raise RuntimeError('File already exists: %s' % sim_dfn)
+sam_dfn = str(os.path.join(d, '.'.join((str(sc.seed), 'samples', 'npy'))))
+if os.path.exists(sam_dfn):
+    raise RuntimeError('File already exists: %s' % sam_dfn)
 
-data = simulator.run_pre(sc)
-np.save(dfn, data)
-sc.run_pre_datafile = dfn
+sim_data, sample_data = simulator.run_pre(sc)
+np.save(sim_dfn, sim_data)
+np.save(sam_dfn, sample_data)
+sc.run_pre_datafile = sim_dfn
+sc.run_pre_samplesfile = sam_dfn
 sc.save_JSON(sc_file)

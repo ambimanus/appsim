@@ -1,5 +1,12 @@
 #!/bin/bash
 
+abort() {
+  if [ $1 -eq 1 ]; then
+    echo "Error, aborting."
+    exit 1
+  fi
+}
+
 SC='{
   "title": "Test",
   "seed": 0,
@@ -18,6 +25,15 @@ SC='{
 }'
 
 REV=$(python revision.py)
+abort $?
 
 source /home/chh/.virtualenv/appsim/bin/activate
-python run_unctrl.py "$SC" "$REV"
+abort $?
+SC_FILE=$(python prepare_scenario.py "$SC" "$REV")
+abort $?
+python run_unctrl.py "$SC_FILE"
+abort $?
+python run_pre.py "$SC_FILE"
+abort $?
+
+echo "Simulation done, see $(dirname $SC_FILE)"

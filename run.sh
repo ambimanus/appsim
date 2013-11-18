@@ -30,7 +30,7 @@ abort() {
 #     Block Late Morning covering hours 9 to 12
 #     Block Early Afternoon covering hours 13 to 1
 
-SC='{
+SC_BLOCK='{
   "title": "Test",
   "seed": 0,
   "sample_size": 100,
@@ -39,11 +39,50 @@ SC='{
   "t_block_start": [2010, 4, 3, 11],
   "t_block_end": [2010, 4, 3, 14],
   "t_end": [2010, 4, 4],
-  "block": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+  "objective": "epex",
+  "block": [
+    1000,
+    1000,
+    1000,
+    1000,
+    1000,
+    1000,
+    1000,
+    1000,
+    1000,
+    1000,
+    1000,
+    1000],
   "device_templates": [
-    ["Vaillant EcoPower 1.0", 1],
-    ["Vaillant EcoPower 20.0", 1],
-    ["Stiebel Eltron WPF 10", 1]
+    ["Vaillant EcoPower 1.0", 10],
+    ["Vaillant EcoPower 3.0", 2],
+    ["Vaillant EcoPower 4.7", 2],
+    ["Vaillant EcoPower 20.0", 0],
+    ["Stiebel Eltron WPF 5", 2],
+    ["Stiebel Eltron WPF 7", 2],
+    ["Stiebel Eltron WPF 10", 2],
+    ["Stiebel Eltron WPF 13", 2],
+    ["Weishaupt WWP S 24", 0],
+    ["Weishaupt WWP S 30", 0],
+    ["Weishaupt WWP S 37", 0]
+  ],
+  "state_files": [],
+  "state_files_ctrl": [],
+  "sched_file": null
+}'
+
+SC_PEAKSHAVING='{
+  "title": "Test",
+  "seed": 0,
+  "sample_size": 100,
+  "t_pre": [2010, 4, 2],
+  "t_start": [2010, 4, 3],
+  "t_block_start": [2010, 4, 3, 10],
+  "t_block_end": [2010, 4, 3, 16],
+  "t_end": [2010, 4, 4],
+  "objective": "peakshaving",
+  "device_templates": [
+    ["Stiebel Eltron WPF 10", 20]
   ],
   "state_files": [],
   "state_files_ctrl": [],
@@ -55,7 +94,7 @@ abort $?
 
 source /home/chh/.virtualenv/appsim/bin/activate
 abort $?
-SC_FILE=$(python prepare_scenario.py "$SC" "$REV")
+SC_FILE=$(python prepare_scenario.py "$SC_BLOCK" "$REV")
 abort $?
 python run_unctrl.py "$SC_FILE"
 abort $?

@@ -103,6 +103,7 @@ class Test(Scenario):
         ]
 
         self.state_files = []
+        self.state_files_ctrl = []
         self.sched_file = None
 
         self._make_timestamps()

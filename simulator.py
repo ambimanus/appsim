@@ -41,7 +41,8 @@ def create_sample(device, sample_size, t_start, t_end, progress, density=0.1):
     sample = np.array(device.components.sampler.sample(sample_size, duration=d))
     # Add noise to prevent breaking the SVDD model due to linear dependencies
     np.random.seed(device.random.rand_int())
-    noise = np.abs(np.random.normal(scale=0.0001, size=(sample_size, d)))
+    scale = 0.000001 * np.max(np.abs(sample))
+    noise = np.random.normal(scale=scale, size=(sample_size, d))
 
     sample = (sample / 1000) + noise
 
@@ -109,6 +110,13 @@ def run_schedule(sc):
         d.components.scheduler.schedule = sched.tolist()
         # Simulate
         sim_data.append(simulate(d, sc.i_block_start, sc.i_block_end, p_sim))
+        # Save state
+        packer = xdrlib.Packer()
+        d.save_state(packer)
+        tmpf = NamedTemporaryFile(mode='wb', dir='/tmp', delete=False)
+        tmpf.write(packer.get_buffer())
+        tmpf.close()
+        sc.state_files_ctrl.append(tmpf.name)
     print()
     return np.array(sim_data)
 
@@ -117,7 +125,13 @@ def run_post(sc):
     print('--- Simulating uncontrolled behavior in [block_end, end]')
     p_sim = PBar(len(sc.devices) * (sc.i_end - sc.i_block_end)).start()
     sim_data = []
-    for d in sc.devices:
+    for d, statefile in zip(sc.devices, sc.state_files_ctrl):
+        # Load state
+        with open(statefile, 'rb') as data:
+            unpacker = xdrlib.Unpacker(data.read())
+            d.load_state(unpacker)
+        os.remove(statefile)
+        # Simulate
         sim_data.append(simulate(d, sc.i_block_end, sc.i_end, p_sim))
     print()
     return np.array(sim_data)

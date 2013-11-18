@@ -27,3 +27,12 @@ np.save(sam_dfn, sample_data)
 sc.run_pre_datafile = sim_dfn
 sc.run_pre_samplesfile = sam_dfn
 sc.save_JSON(sc_file)
+
+# import matplotlib.pyplot as plt
+# fig, ax = plt.subplots(len(sample_data))
+# for i, samples in enumerate(sample_data):
+#     t = np.arange(samples.shape[1])
+#     for s in samples:
+#         ax[i].plot(t, s)
+# plt.show()
+# sys.exit(1)

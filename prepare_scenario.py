@@ -12,8 +12,8 @@ sc = scenario_factory.Scenario()
 sc.from_JSON(sys.argv[1])
 sc.rev_appsim = sys.argv[2]
 
-basepath = 'data'
-d = str(os.path.join(basepath, '_'.join((ts, sc.title))))
+datadir = 'data'
+d = str(os.path.join(os.getcwd(), datadir, '_'.join((ts, sc.title))))
 if not os.path.exists(d):
     os.makedirs(d)
 fn = str(os.path.join(d, '.'.join((str(sc.seed), 'json'))))

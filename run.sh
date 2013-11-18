@@ -39,12 +39,14 @@ SC='{
   "t_block_start": [2010, 4, 3, 11],
   "t_block_end": [2010, 4, 3, 14],
   "t_end": [2010, 4, 4],
-  "block": [0, 0, 0],
+  "block": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
   "device_templates": [
     ["Vaillant EcoPower 1.0", 1],
+    ["Vaillant EcoPower 20.0", 1],
     ["Stiebel Eltron WPF 10", 1]
   ],
   "state_files": [],
+  "state_files_ctrl": [],
   "sched_file": null
 }'
 
@@ -60,15 +62,19 @@ abort $?
 python run_pre.py "$SC_FILE"
 abort $?
 
+echo "--- Running COHDA for [block_start, block_end]"
+OLD_PWD=$(pwd)
 source /home/chh/.virtualenv/jpype/bin/activate
-python ../crystal-jpype/src/appsim.py "$SC_FILE"
+cd ../crystal-jpype/src
+python appsim.py "$SC_FILE"
 abort $?
+cd $OLD_PWD
 
-# source /home/chh/.virtualenv/appsim/bin/activate
-# abort $?
-# python run_schedule.py "$SC_FILE"
-# abort $?
-# python run_post.py "$SC_FILE"
-# abort $?
+source /home/chh/.virtualenv/appsim/bin/activate
+abort $?
+python run_schedule.py "$SC_FILE"
+abort $?
+python run_post.py "$SC_FILE"
+abort $?
 
 echo "Simulation done, see $(dirname $SC_FILE)"

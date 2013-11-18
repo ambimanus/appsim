@@ -17,9 +17,9 @@ class Scenario(object):
             elif name in HP_MODELS:
                 func = HP_MODELS[name]
             else:
-                raise TypeError('unknown type: %s' % typ)
+                raise TypeError('unknown type: %s' % name)
             for i in range(n):
-                self.devices.append(func(self.rnd.random(), idx))
+                self.devices.append(func(idx, idx))
                 idx += 1
 
 
@@ -91,7 +91,7 @@ class Test(Scenario):
         self.t_end = datetime(2010, 4, 4)
 
         self.block = [0.0 for i in range(
-                (self.t_block_end - self.t_block_start).seconds / 60 / 60)]
+            (self.t_block_end - self.t_block_start).total_seconds() / 60 / 60)]
 
         self.sample_size = 100
         self.seed = seed

@@ -3,7 +3,7 @@ import time
 import json
 from datetime import datetime
 
-from device_factory import CHP_MODELS, HP_MODELS
+from device_factory import CHP_MODELS, HP_MODELS, BATTERY_MODELS
 
 
 class Scenario(object):
@@ -16,6 +16,8 @@ class Scenario(object):
                 func = CHP_MODELS[name]
             elif name in HP_MODELS:
                 func = HP_MODELS[name]
+            elif name in BATTERY_MODELS:
+                func = BATTERY_MODELS[name]
             else:
                 raise TypeError('unknown type: %s' % name)
             for i in range(n):

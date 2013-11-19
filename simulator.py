@@ -4,6 +4,8 @@ from tempfile import NamedTemporaryFile
 
 import numpy as np
 
+from appliancesim.ext.device import SuccessiveSampler, HiResSampler
+
 from progress import PBar
 
 
@@ -37,8 +39,16 @@ def create_sample(device, sample_size, t_start, t_end, progress, density=0.1):
     device = device.copy()
     device.step(t_start)
     device.components.sampler.setpoint_density = density
-    d = (t_end - t_start) / 15
-    sample = np.array(device.components.sampler.sample(sample_size, duration=d))
+    d = (t_end - t_start)
+    sampler = device.components.sampler
+    if type(sampler) == SuccessiveSampler:
+        modes = None
+        sample = np.array(sampler.sample(sample_size, duration=d))
+    elif type(sampler) == HiResSampler:
+        modes, sample = np.array(sampler.sample(sample_size, duration=d)
+                                ).swapaxes(0, 1)
+    else:
+        raise RuntimeError('unknown sampler %s' %type(sampler))
     # Add noise to prevent breaking the SVDD model due to linear dependencies
     np.random.seed(device.random.rand_int())
     scale = 0.000001 * np.max(np.abs(sample))
@@ -50,8 +60,8 @@ def create_sample(device, sample_size, t_start, t_end, progress, density=0.1):
         # This is a consumer, so negate the sample
         sample = sample * (-1.0)
 
-    progress.update(progress.currval + sample_size)
-    return sample
+    progress.update(progress.currval + (sample_size * d))
+    return modes, sample
 
 
 def run_unctrl(sc):
@@ -71,16 +81,17 @@ def run_unctrl(sc):
 
 def run_pre(sc):
     print('--- Simulating uncontrolled behavior in [pre, start - 1] and [start, block_start]')
-    p_sim = PBar(len(sc.devices) * (sc.i_block_start - sc.i_pre)).start()
-    p_sam = PBar(len(sc.devices) * sc.sample_size).start()
-
+    progress = PBar((len(sc.devices) * (sc.i_block_start - sc.i_pre)) +
+                    (len(sc.devices) * sc.sample_size * (sc.i_block_end -
+                            sc.i_block_start))).start()
     sim_data = []
+    modes_data = []
     sample_data = []
     for d in sc.devices:
         # Pre-Simulation
-        simulate(d, sc.i_pre, sc.i_start, p_sim)
+        simulate(d, sc.i_pre, sc.i_start, progress)
         # Simulation
-        sim_data.append(simulate(d, sc.i_start, sc.i_block_start, p_sim))
+        sim_data.append(simulate(d, sc.i_start, sc.i_block_start, progress))
         # Save state
         packer = xdrlib.Packer()
         d.save_state(packer)
@@ -89,25 +100,46 @@ def run_pre(sc):
         tmpf.close()
         sc.state_files.append(tmpf.name)
         # Sampling
-        sample_data.append(create_sample(d, sc.sample_size, sc.i_block_start,
-                                         sc.i_block_end, p_sam))
+        modes, sample = create_sample(d, sc.sample_size, sc.i_block_start,
+                                      sc.i_block_end, progress)
+        modes_data.append(modes)
+        sample_data.append(sample)
     print()
-    return np.array(sim_data), sample_data
+    return np.array(sim_data), np.array(modes_data), np.array(sample_data)
 
 
 def run_schedule(sc):
     print('--- Simulating controlled behaviour in [block_start, block_end]')
     p_sim = PBar(len(sc.devices) * (sc.i_block_end - sc.i_block_start)).start()
     schedules = np.load(sc.sched_file)
+    samples_file = np.load(sc.run_pre_samplesfile)
+    modes_file = np.load(sc.run_pre_modesfile)
     sim_data = []
-    for d, statefile, sched in zip(sc.devices, sc.state_files, schedules):
+    for d, statefile, sched, modes, samples in zip(
+            sc.devices, sc.state_files, schedules, modes_file, samples_file):
         # Load state
         with open(statefile, 'rb') as data:
             unpacker = xdrlib.Unpacker(data.read())
             d.load_state(unpacker)
         os.remove(statefile)
-        # Set schedule
-        d.components.scheduler.schedule = sched.tolist()
+        if hasattr(d.components, 'direct_scheduler'):
+            # Find modes for schedule
+            if sched in samples:
+                # Matching sample found, select mode directly
+                mode = modes[np.where(samples == sched)]
+            else:
+                # No matching sample, select the most similar one
+                mode, dist = None, None
+                for i, sample in enumerate(samples):
+                    d = np.sqrt(np.sum((np.array(sched) - np.array(sample))**2))
+                    if dist is None or d < dist:
+                        dist = d
+                        mode = modes[i]
+            # Set operational mode
+            d.components.direct_scheduler.schedule = mode.tolist()
+        else:
+            # No modes available, use power schedule
+            d.components.scheduler.schedule = sched.tolist()
         # Simulate
         sim_data.append(simulate(d, sc.i_block_start, sc.i_block_end, p_sim))
         # Save state

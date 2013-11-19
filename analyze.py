@@ -94,7 +94,8 @@ if __name__ == '__main__':
         ctrl[:,:,idx:idx + l.shape[-1]] = l
         idx += l.shape[-1]
 
-    sched = sched.repeat(15, axis=1)
+    if sched.shape[-1] == unctrl.shape[-1] / 15:
+        sched = sched.repeat(15, axis=1)
     ctrl_sched = np.zeros((unctrl.shape[0], unctrl.shape[-1]))
     ctrl_sched = np.ma.array(ctrl_sched)
     ctrl_sched[:,:pre.shape[-1]] = np.ma.masked

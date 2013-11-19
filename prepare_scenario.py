@@ -1,5 +1,6 @@
 import sys
 import os
+import shutil
 import datetime
 
 import scenario_factory
@@ -14,11 +15,15 @@ sc.rev_appsim = sys.argv[2]
 
 datadir = 'data'
 d = str(os.path.join(os.getcwd(), datadir, '_'.join((ts, sc.title))))
-if not os.path.exists(d):
-    os.makedirs(d)
+if os.path.exists(d):
+    print('"%s" already exists, may I delete it? [Y/n] ' % d, end='', file=sys.stderr)
+    delete = input()
+    if delete == 'Y' or delete == '':
+        shutil.rmtree(d)
+    else:
+        sys.exit(1)
+os.makedirs(d)
 fn = str(os.path.join(d, '.'.join((str(sc.seed), 'json'))))
-if os.path.exists(fn):
-    raise RuntimeError('File already exists: %s' % fn)
 sc.save_JSON(fn)
 
 print(fn)

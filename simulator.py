@@ -44,7 +44,7 @@ def create_sample(device, sample_size, t_start, t_end, progress, density=0.1):
     scale = 0.000001 * np.max(np.abs(sample))
     noise = np.random.normal(scale=scale, size=(sample_size, d))
 
-    sample = (sample / 1000) + noise
+    sample = sample + noise
 
     if device.typename == 'heatpump':
         # This is a consumer, so negate the sample

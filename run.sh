@@ -2,8 +2,8 @@
 
 abort() {
   if [ $1 -ne 0 ]; then
-    echo "Error, aborting."
-    exit 1
+    echo "Error $1, aborting."
+    exit $1
   fi
 }
 
@@ -41,22 +41,22 @@ SC_BLOCK='{
   "t_end": [2010, 4, 4],
   "objective": "epex",
   "block": [
-    1000,
-    1000,
-    1000,
-    1000,
-    1000,
-    1000,
-    1000,
-    1000,
-    1000,
-    1000,
-    1000,
-    1000],
+    10000,
+    10000,
+    10000,
+    10000,
+    10000,
+    10000,
+    10000,
+    10000,
+    10000,
+    10000,
+    10000,
+    10000],
   "device_templates": [
     ["Vaillant EcoPower 1.0", 10],
-    ["Vaillant EcoPower 3.0", 2],
-    ["Vaillant EcoPower 4.7", 2],
+    ["Vaillant EcoPower 3.0", 5],
+    ["Vaillant EcoPower 4.7", 5],
     ["Vaillant EcoPower 20.0", 0],
     ["Stiebel Eltron WPF 5", 2],
     ["Stiebel Eltron WPF 7", 2],
@@ -117,3 +117,6 @@ python run_post.py "$SC_FILE"
 abort $?
 
 echo "Simulation done, see $(dirname $SC_FILE)"
+
+python analyze.py "$SC_FILE"
+abort $?

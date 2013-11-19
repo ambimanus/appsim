@@ -96,9 +96,10 @@ if __name__ == '__main__':
 
     sched = sched.repeat(15, axis=1)
     ctrl_sched = np.zeros((unctrl.shape[0], unctrl.shape[-1]))
-    ctrl_sched[:,:pre.shape[-1]] = pre[:,0]
+    ctrl_sched = np.ma.array(ctrl_sched)
+    ctrl_sched[:,:pre.shape[-1]] = np.ma.masked
     ctrl_sched[:,pre.shape[-1]:pre.shape[-1] + sched.shape[-1]] = sched
-    ctrl_sched[:,pre.shape[-1] + sched.shape[-1]:] = post[:,0]
+    ctrl_sched[:,pre.shape[-1] + sched.shape[-1]:] = np.ma.masked
 
     # plot_each_device(sc, unctrl, ctrl, sched)
     plot_aggregated(sc, unctrl, ctrl, ctrl_sched)

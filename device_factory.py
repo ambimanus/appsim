@@ -5,7 +5,7 @@ from appliancesim.ext.thermal import HeatDemand
 from chpsim.CHP import Storage, Scheduler, DirectScheduler
 import chpsim.CHP as chp
 import heatpumpsim as hp
-import batterysim as bat
+from batterysim.battery import Battery, Scheduler as BatSched
 
 
 def ecopower_1(seed, id):
@@ -267,15 +267,17 @@ def create_battery(seed, id, model, E_max, eff_bat, eff_conv, idle_discharge,
                    P_min, P_max):
 
     if model in list(BATTERY_MODELS.keys()):
-        device = Device('battery', id, [Consumer(), bat.Battery(),
-                        bat.Scheduler(), SuccessiveSampler()], seed=seed)
+        device = Device('battery', id, [Consumer(), Battery(),
+                        BatSched(), SuccessiveSampler()], seed=seed)
     else:
         raise(TypeError('unknown model:', model))
 
     # Leistungsdaten
-    device.max_E = E_max
-    device.efficiency_battery = eff_bat
-    device.efficiency_converter = eff_conv
-    device.idle_discharge = idle_discharge
-    device.P_min = P_min
-    device.P_max = P_max
+    device.components.battery.max_E = E_max
+    device.components.battery.efficiency_battery = eff_bat
+    device.components.battery.efficiency_converter = eff_conv
+    device.components.battery.idle_discharge = idle_discharge
+    device.components.battery.P_min = P_min
+    device.components.battery.P_max = P_max
+
+    return device

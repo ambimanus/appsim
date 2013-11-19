@@ -15,14 +15,24 @@ def simulate(device, start, end, progress, newline=False):
     data = np.empty((len(headers), end - start))
 
     # Simulation
-    for now in range(start, end):
-        device.step(now)
-        i = now - start
-        data[0][i] = device.components.engine.P_el
-        data[1][i] = device.components.engine.P_th
-        data[2][i] = device.components.storage.T
-        data[3][i] = device.components.heatsink.T_env
-        progress.update()
+    if device.typename == 'battery':
+        for now in range(start, end):
+            device.step(now)
+            i = now - start
+            data[0][i] = device.components.consumer.P
+            data[1][i] = None
+            data[2][i] = device.components.battery.E / 1000
+            data[3][i] = None
+            progress.update()
+    else:
+        for now in range(start, end):
+            device.step(now)
+            i = now - start
+            data[0][i] = device.components.engine.P_el
+            data[1][i] = device.components.engine.P_th
+            data[2][i] = device.components.storage.T
+            data[3][i] = device.components.heatsink.T_env
+            progress.update()
 
     if device.typename == 'heatpump':
         # This is a consumer, so negate P_el

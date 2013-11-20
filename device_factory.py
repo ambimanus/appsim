@@ -11,73 +11,73 @@ from batterysim.battery import Battery, Scheduler as BatSched
 def ecopower_1(seed, id):
     return create_heater(seed, id, model='Vaillant EcoPower 1.0',
         T_min=273+50, T_max=273+70, storage_weight=500, storage_loss=1.5,
-        annual_demand=10000, T_noise=2)
+        annual_demand=6000, P_noise=0.1, S_noise=0.1, D_noise=0.2, T_noise=5)
 
 
 def ecopower_3(seed, id):
     return create_heater(seed, id, model='Vaillant EcoPower 3.0',
         T_min=273+50, T_max=273+70, storage_weight=1000, storage_loss=1.5,
-        annual_demand=20000, T_noise=2)
+        annual_demand=14000, P_noise=0.1, S_noise=0.1, D_noise=0.2, T_noise=5)
 
 
 def ecopower_test(seed, id):
     return create_heater(seed, id, model='Vaillant EcoPower 3.0 test',
         T_min=273+50, T_max=273+70, storage_weight=1000, storage_loss=1.5,
-        annual_demand=20000, T_noise=2)
+        annual_demand=14000, P_noise=0.1, S_noise=0.1, D_noise=0.2, T_noise=5)
 
 
 def ecopower_4(seed, id):
     return create_heater(seed, id, model='Vaillant EcoPower 4.7',
         T_min=273+50, T_max=273+70, storage_weight=1500, storage_loss=1.5,
-        annual_demand=35000, T_noise=2)
+        annual_demand=17000, P_noise=0.1, S_noise=0.1, D_noise=0.2, T_noise=5)
 
 
 def ecopower_20(seed, id):
     return create_heater(seed, id, model='Vaillant EcoPower 20.0',
-        T_min=273+50, T_max=273+70, storage_weight=6000, storage_loss=1.5,
-        annual_demand=140000, T_noise=2)
+        T_min=273+50, T_max=273+70, storage_weight=8000, storage_loss=1.5,
+        annual_demand=50000, P_noise=0.1, S_noise=0.1, D_noise=0.2, T_noise=5)
 
 
 def se_wpf_5(seed, id):
     return create_heater(seed, id, model='Stiebel Eltron WPF 5',
         T_min=273+40, T_max=273+50, storage_weight=300, storage_loss=1.5,
-        annual_demand=10000, T_noise=2)
+        annual_demand=10000, P_noise=0.1, S_noise=0.1, D_noise=0.2, T_noise=5)
 
 
 def se_wpf_7(seed, id):
     return create_heater(seed, id, model='Stiebel Eltron WPF 7',
         T_min=273+40, T_max=273+50, storage_weight=400, storage_loss=1.5,
-        annual_demand=15000, T_noise=2)
+        annual_demand=15000, P_noise=0.1, S_noise=0.1, D_noise=0.2, T_noise=5)
 
 
 def se_wpf_10(seed, id):
     return create_heater(seed, id, model='Stiebel Eltron WPF 10',
         T_min=273+40, T_max=273+50, storage_weight=600, storage_loss=1.5,
-        annual_demand=20000, T_noise=2)
+        annual_demand=20000, P_noise=0.1, S_noise=0.1, D_noise=0.2, T_noise=5)
 
 
 def se_wpf_13(seed, id):
     return create_heater(seed, id, model='Stiebel Eltron WPF 13',
         T_min=273+40, T_max=273+50, storage_weight=700, storage_loss=1.5,
-        annual_demand=25000, T_noise=2)
+        annual_demand=25000, P_noise=0.1, S_noise=0.1, D_noise=0.2, T_noise=5)
 
 
 def wwp_s_24(seed, id):
     return create_heater(seed, id, model='Weishaupt WWP S 24',
         T_min=273+40, T_max=273+50, storage_weight=1500, storage_loss=1.5,
-        annual_demand=50000, T_noise=2)
+        annual_demand=50000, P_noise=0.1, S_noise=0.1, D_noise=0.2, T_noise=5)
 
 
 def wwp_s_30(seed, id):
     return create_heater(seed, id, model='Weishaupt WWP S 30',
         T_min=273+40, T_max=273+50, storage_weight=2000, storage_loss=1.5,
-        annual_demand=70000, T_noise=2)
+        annual_demand=70000, P_noise=0.1, S_noise=0.1, D_noise=0.2, T_noise=5)
 
 
 def wwp_s_37(seed, id):
     return create_heater(seed, id, model='Weishaupt WWP S 37',
         T_min=273+40, T_max=273+50, storage_weight=3000, storage_loss=1.5,
-        annual_demand=90000, T_noise=2)
+        annual_demand=90000, P_noise=0.1, S_noise=0.1, D_noise=0.2, T_noise=5)
 
 
 def rf_100(seed, id):
@@ -110,7 +110,7 @@ BATTERY_MODELS = {
 
 
 def create_heater(seed, id, model, T_min, T_max, storage_weight, storage_loss,
-                  annual_demand, T_noise):
+                  annual_demand, P_noise, S_noise, D_noise, T_noise):
     if model in list(CHP_MODELS.keys()):
         # Erstelle BHKW
         device = Device('chp', id, [Consumer(), HeatDemand(), Storage(),
@@ -129,24 +129,32 @@ def create_heater(seed, id, model, T_min, T_max, storage_weight, storage_loss,
     else:
         raise(TypeError('unknown model:', model))
 
+
+    def noisy(tup):
+        return tuple([int(device.random.normal(t, P_noise * t))
+                      for t in tup[:-1]]) + (tup[-1],)
+
+    def noisyl(lis):
+        return [int(device.random.normal(t, P_noise * t)) for t in lis]
+
     # Leistungsdaten BHKW
     #   args: P_el_min, P_el_max, P_th_min, P_th_max, modulation steps
     engine = device.components.engine
     if model == 'Vaillant EcoPower 1.0':
         # no modulation, set steps directly
-        engine.steps = [(0, 0), (1000, 2500)]
+        engine.steps = [noisy((0, 0)), noisy((1000, 2500))]
     elif model == 'Vaillant EcoPower 3.0':
         # Drehzahl: 1400-3600 in 100er Schritten modulierbar --> 22 Stufen
-        engine.set_equidistant_steps(1500, 3000, 4700, 8000, 22)
+        engine.set_equidistant_steps(*noisy((1500, 3000, 4700, 8000, 22)))
     elif model == 'Vaillant EcoPower 3.0 test':
         # Drehzahl: 1400-3600 in nur 5 Stufen modulierbar, zu Testzwecken
-        engine.set_equidistant_steps(1500, 3000, 4700, 8000, 5)
+        engine.set_equidistant_steps(*noisy((1500, 3000, 4700, 8000, 5)))
     elif model == 'Vaillant EcoPower 4.7':
         # Drehzahl: 1400-3600 in 100er Schritten modulierbar --> 22 Stufen
-        engine.set_equidistant_steps(1500, 4700, 4700, 12500, 22)
+        engine.set_equidistant_steps(*noisy((1500, 4700, 4700, 12500, 22)))
     elif model == 'Vaillant EcoPower 20.0':
         # neu, noch kein Datenblatt verfügbar
-        engine.set_equidistant_steps(7000, 20000, 12000, 42000, 22)
+        engine.set_equidistant_steps(*noisy((7000, 20000, 12000, 42000, 22)))
         # FIXME: Modulationsstufen
 
     # Leistungsdaten Wärmepumpe
@@ -154,50 +162,50 @@ def create_heater(seed, id, model, T_min, T_max, storage_weight, storage_loss,
     elif model == 'Stiebel Eltron WPF 5':
         device.components.engine.characteristics = {
             'setpoints': {
-                'P_el': {'grid': [[35, 50]], 'values': [2000, 2400]},
+                'P_el': {'grid': [[35, 50]], 'values': noisyl([2000, 2400])},
                 'P_th': {
                     'grid': [[-5, 20], [35, 50]],
-                    'values': [[5900, 5600], [8900, 8400]],
+                    'values': [noisyl([5900, 5600]), noisyl([8900, 8400])],
                 }
             }
         }
     elif model == 'Stiebel Eltron WPF 7':
         device.components.engine.characteristics = {
             'setpoints': {
-                'P_el': {'grid': [[35, 50]], 'values': [2500, 3100]},
+                'P_el': {'grid': [[35, 50]], 'values': noisyl([2500, 3100])},
                 'P_th': {
                     'grid': [[-5, 20], [35, 50]],
-                    'values': [[6500, 6300], [11900, 11300]],
+                    'values': [noisyl([6500, 6300]), noisyl([11900, 11300])],
                 }
             }
         }
     elif model == 'Stiebel Eltron WPF 10':
         device.components.engine.characteristics = {
             'setpoints': {
-                'P_el': {'grid': [[35, 50]], 'values': [2400, 3200]},
+                'P_el': {'grid': [[35, 50]], 'values': noisyl([2400, 3200])},
                 'P_th': {
                     'grid': [[-5, 20], [35, 50]],
-                    'values': [[8700, 8200], [15800, 14900]],
+                    'values': [noisyl([8700, 8200]), noisyl([15800, 14900])],
                 }
             }
         }
     elif model == 'Stiebel Eltron WPF 13':
         device.components.engine.characteristics = {
             'setpoints': {
-                'P_el': {'grid': [[35, 50]], 'values': [4200, 5200]},
+                'P_el': {'grid': [[35, 50]], 'values': noisyl([4200, 5200])},
                 'P_th': {
                     'grid': [[-5, 20], [35, 50]],
-                    'values': [[11600, 11200], [21300, 20200]],
+                    'values': [noisyl([11600, 11200]), noisyl([21300, 20200])],
                 }
             }
         }
     elif model == 'Weishaupt WWP S 24':
         device.components.engine.characteristics = {
             'setpoints': {
-                'P_el': {'grid': [[35, 50]], 'values': [5800, 7800]},
+                'P_el': {'grid': [[35, 50]], 'values': noisyl([5800, 7800])},
                 'P_th': {
                     'grid': [[-5, 25], [35, 50]],
-                    'values': [[21100, 20000], [41500, 39000]],
+                    'values': [noisyl([21100, 20000]), noisyl([41500, 39000])],
                 }
             }
         }
@@ -206,21 +214,22 @@ def create_heater(seed, id, model, T_min, T_max, storage_weight, storage_loss,
             'setpoints': {
                 'P_el': {
                     'grid': [[35, 45, 55]],
-                    'values': [7500, 9000, 11000]
+                    'values': noisyl([7500, 9000, 11000])
                 },
                 'P_th': {
                     'grid': [[-5, 25], [35, 45, 55]],
-                    'values': [[26500, 25500, 24500], [54500, 53000, 51000]],
+                    'values': [noisyl([26500, 25500, 24500]),
+                               noisyl([54500, 53000, 51000])],
                 }
             }
         }
     elif model == 'Weishaupt WWP S 37':
         device.components.engine.characteristics = {
             'setpoints': {
-                'P_el': {'grid': [[35, 50]], 'values': [8500, 11500]},
+                'P_el': {'grid': [[35, 50]], 'values': noisyl([8500, 11500])},
                 'P_th': {
                     'grid': [[-5, 25], [35, 50]],
-                    'values': [[32000, 29500], [63500, 61500]],
+                    'values': [noisyl([32000, 29500]), noisyl([63500, 61500])],
                 }
             }
         }
@@ -232,7 +241,8 @@ def create_heater(seed, id, model, T_min, T_max, storage_weight, storage_loss,
     device.components.engine.T_min = T_min
     device.components.engine.T_max = T_max
     # Warmwasserspeicher
-    device.components.storage.weight = storage_weight
+    device.components.storage.weight = \
+            device.random.normal(storage_weight, S_noise * storage_weight)
     # Bereitschaftsenergieverbrauch
     device.components.storage.loss = storage_loss
     # initiale Temperatur zufällig
@@ -243,13 +253,15 @@ def create_heater(seed, id, model, T_min, T_max, storage_weight, storage_loss,
     # VDI Referenzlastprofil für KWK in EFH/MFH
     device.components.heatsink.norm_consumption_file = appdata.vdi_4655()
     # DWD Wetterdaten für 2010
-    device.components.heatsink.weather_file = appdata.dwd_weather('bremen', 2010)
+    device.components.heatsink.weather_file = \
+            appdata.dwd_weather('bremen', 2010)
     # Wärme-Jahresverbrauch
     # EFH: >15000
     # ZFH: >25000
     # MFH: >45000
     # HH: >150000
-    device.components.heatsink.annual_demand = annual_demand
+    device.components.heatsink.annual_demand = \
+            device.random.normal(annual_demand, D_noise * annual_demand)
     # Rauschen auf dem VDI-Wärmebedarf
     device.components.heatsink.temp_noise = T_noise
 

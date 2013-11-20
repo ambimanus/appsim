@@ -12,7 +12,7 @@ from progress import PBar
 def simulate(device, start, end, progress, newline=False):
     # Datenfelder
     headers = ['P_el', 'P_th', 'T', 'T_env']
-    data = np.empty((len(headers), end - start))
+    data = np.zeros((len(headers), end - start))
 
     # Simulation
     if device.typename == 'battery':
@@ -50,6 +50,8 @@ def create_sample(device, sample_size, t_start, t_end, progress, density=0.1):
     device.step(t_start)
     device.components.sampler.setpoint_density = density
     d = (t_end - t_start)
+    if d == 0:
+        return np.zeros((sample_size, 0)), np.zeros((sample_size, 0))
     sampler = device.components.sampler
     if type(sampler) == SuccessiveSampler:
         modes = None
@@ -97,6 +99,10 @@ def run_pre(sc):
     sim_data = []
     modes_data = []
     sample_data = []
+    if sc.i_block_end - sc.i_block_start == 0:
+        return (np.zeros((len(sc.devices), 4, sc.i_block_start - sc.i_start)),
+                np.zeros((len(sc.devices), sc.sample_size, 0)),
+                np.zeros((len(sc.devices), sc.sample_size, 0)))
     for d in sc.devices:
         # Pre-Simulation
         simulate(d, sc.i_pre, sc.i_start, progress)
@@ -166,6 +172,8 @@ def run_schedule(sc):
 def run_post(sc):
     print('--- Simulating uncontrolled behavior in [block_end, end]')
     p_sim = PBar(len(sc.devices) * (sc.i_end - sc.i_block_end)).start()
+    if sc.i_block_end - sc.i_block_start == 0:
+        return np.zeros((len(sc.devices), 4, sc.i_end - sc.i_block_end))
     sim_data = []
     for d, statefile in zip(sc.devices, sc.state_files_ctrl):
         # Load state

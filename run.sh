@@ -31,25 +31,24 @@ abort() {
 #     Block Early Afternoon covering hours 13 to 1
 
 SC_BLOCK='{
-  "title": "Test",
+  "title": "CHP50-base",
   "seed": 0,
   "sample_size": 100,
-  "t_pre": [2010, 3, 1],
+  "t_pre": [2010, 3, 17],
   "t_start": [2010, 4, 1],
   "t_block_start": [2010, 4, 1],
-  "t_block_end": [2010, 4, 1],
-  "t_end": [2010, 4, 8],
+  "t_block_end": [2010, 4, 2],
+  "t_end": [2010, 4, 3],
   "objective": "epex",
   "block": [100000],
   "device_templates": [
-    ["Vaillant EcoPower 1.0", 0],
-    ["Vaillant EcoPower 3.0", 0],
-    ["Vaillant EcoPower 3.0 test", 0],
-    ["Vaillant EcoPower 4.7", 0],
-    ["Vaillant EcoPower 20.0", 0],
+    ["Vaillant EcoPower 1.0", 5],
+    ["Vaillant EcoPower 3.0", 10],
+    ["Vaillant EcoPower 4.7", 10],
+    ["Vaillant EcoPower 20.0", 25],
     ["Stiebel Eltron WPF 5", 0],
     ["Stiebel Eltron WPF 7", 0],
-    ["Stiebel Eltron WPF 10", 10],
+    ["Stiebel Eltron WPF 10", 0],
     ["Stiebel Eltron WPF 13", 0],
     ["Weishaupt WWP S 24", 0],
     ["Weishaupt WWP S 30", 0],
@@ -61,18 +60,30 @@ SC_BLOCK='{
   "sched_file": null
 }'
 
-SC_PEAKSHAVING='{
-  "title": "Test",
+# objective = ["peakshaving" | "valleyfilling" | "spreadreduce"]
+SC_SPREAD='{
+  "title": "Peakshaving-50-hybrid",
   "seed": 0,
   "sample_size": 100,
-  "t_pre": [2010, 4, 2],
-  "t_start": [2010, 4, 3],
-  "t_block_start": [2010, 4, 3, 10],
-  "t_block_end": [2010, 4, 3, 16],
+  "t_pre": [2010, 3, 25],
+  "t_start": [2010, 4, 1],
+  "t_block_start": [2010, 4, 2, 9],
+  "t_block_end": [2010, 4, 2, 17],
   "t_end": [2010, 4, 4],
   "objective": "peakshaving",
   "device_templates": [
-    ["Stiebel Eltron WPF 10", 20]
+    ["Vaillant EcoPower 1.0", 5],
+    ["Vaillant EcoPower 3.0", 5],
+    ["Vaillant EcoPower 4.7", 5],
+    ["Vaillant EcoPower 20.0", 2],
+    ["Stiebel Eltron WPF 5", 5],
+    ["Stiebel Eltron WPF 7", 5],
+    ["Stiebel Eltron WPF 10", 5],
+    ["Stiebel Eltron WPF 13", 5],
+    ["Weishaupt WWP S 24", 1],
+    ["Weishaupt WWP S 30", 1],
+    ["Weishaupt WWP S 37", 1],
+    ["RedoxFlow 100 kWh", 0]
   ],
   "state_files": [],
   "state_files_ctrl": [],
@@ -84,7 +95,8 @@ abort $?
 
 source /home/chh/.virtualenv/appsim/bin/activate
 abort $?
-SC_FILE=$(python prepare_scenario.py "$SC_BLOCK" "$REV")
+# SC_FILE=$(python prepare_scenario.py "$SC_BLOCK" "$REV")
+SC_FILE=$(python prepare_scenario.py "$SC_SPREAD" "$REV")
 abort $?
 python run_unctrl.py "$SC_FILE"
 abort $?

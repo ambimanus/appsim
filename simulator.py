@@ -147,9 +147,9 @@ def run_schedule(sc):
                 # No matching sample, select the most similar one
                 mode, dist = None, None
                 for i, sample in enumerate(samples):
-                    d = np.sqrt(np.sum((np.array(sched) - np.array(sample))**2))
-                    if dist is None or d < dist:
-                        dist = d
+                    r = np.sqrt(np.sum((np.array(sched) - np.array(sample))**2))
+                    if dist is None or r < dist:
+                        dist = r
                         mode = modes[i]
             # Set operational mode
             d.components.direct_scheduler.schedule = mode.tolist()

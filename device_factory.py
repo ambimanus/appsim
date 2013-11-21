@@ -20,12 +20,6 @@ def ecopower_3(seed, id):
         annual_demand=14000, P_noise=0.1, S_noise=0.1, D_noise=0.2, T_noise=5)
 
 
-def ecopower_test(seed, id):
-    return create_heater(seed, id, model='Vaillant EcoPower 3.0 test',
-        T_min=273+50, T_max=273+70, storage_weight=1000, storage_loss=1.5,
-        annual_demand=14000, P_noise=0.1, S_noise=0.1, D_noise=0.2, T_noise=5)
-
-
 def ecopower_4(seed, id):
     return create_heater(seed, id, model='Vaillant EcoPower 4.7',
         T_min=273+50, T_max=273+70, storage_weight=1500, storage_loss=1.5,
@@ -89,7 +83,6 @@ def rf_100(seed, id):
 CHP_MODELS = {
     'Vaillant EcoPower 1.0': ecopower_1,
     'Vaillant EcoPower 3.0': ecopower_3,
-    'Vaillant EcoPower 3.0 test': ecopower_test,
     'Vaillant EcoPower 4.7': ecopower_4,
     'Vaillant EcoPower 20.0': ecopower_20,
 }
@@ -146,9 +139,6 @@ def create_heater(seed, id, model, T_min, T_max, storage_weight, storage_loss,
     elif model == 'Vaillant EcoPower 3.0':
         # Drehzahl: 1400-3600 in 100er Schritten modulierbar --> 22 Stufen
         engine.set_equidistant_steps(*noisy((1500, 3000, 4700, 8000, 22)))
-    elif model == 'Vaillant EcoPower 3.0 test':
-        # Drehzahl: 1400-3600 in nur 5 Stufen modulierbar, zu Testzwecken
-        engine.set_equidistant_steps(*noisy((1500, 3000, 4700, 8000, 5)))
     elif model == 'Vaillant EcoPower 4.7':
         # Drehzahl: 1400-3600 in 100er Schritten modulierbar --> 22 Stufen
         engine.set_equidistant_steps(*noisy((1500, 4700, 4700, 12500, 22)))

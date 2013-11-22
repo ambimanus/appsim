@@ -1,8 +1,7 @@
-from appliancesim.ext.device import (Device, Consumer, SuccessiveSampler,
-                                     HiResSampler)
+from appliancesim.ext.device import Device, Consumer, SuccessiveSampler
 from appliancesim import data as appdata
 from appliancesim.ext.thermal import HeatDemand
-from chpsim.CHP import Storage, Scheduler, DirectScheduler
+from chpsim.CHP import Storage, Scheduler
 import chpsim.CHP as chp
 import heatpumpsim as hp
 from batterysim.battery import Battery, Scheduler as BatSched
@@ -107,8 +106,8 @@ def create_heater(seed, id, model, T_min, T_max, storage_weight, storage_loss,
     if model in list(CHP_MODELS.keys()):
         # Erstelle BHKW
         device = Device('chp', id, [Consumer(), HeatDemand(), Storage(),
-                chp.Engine(), Scheduler(), DirectScheduler(),
-                chp.StubBoostHeater(), HiResSampler()], seed=seed)
+                chp.Engine(), Scheduler(), chp.StubBoostHeater(),
+                SuccessiveSampler()], seed=seed)
         # Minimale Verweilzeit je gefahrenem Betriebsmodus
         device.components.engine.min_step_duration = 60
         # initiale Werte für Verlaufs-Schätzer
@@ -118,7 +117,7 @@ def create_heater(seed, id, model, T_min, T_max, storage_weight, storage_loss,
         # Erstelle Wärmepumpe
         device = Device('heatpump', id, [Consumer(), HeatDemand(),
                 hp.RandomHeatSource(), Storage(), hp.Engine(), Scheduler(),
-                DirectScheduler(), HiResSampler()], seed=seed)
+                SuccessiveSampler()], seed=seed)
     else:
         raise(TypeError('unknown model:', model))
 

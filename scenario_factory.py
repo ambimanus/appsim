@@ -8,6 +8,10 @@ from device_factory import CHP_MODELS, HP_MODELS, BATTERY_MODELS
 
 class Scenario(object):
 
+    def __init__(self):
+        self.loaded_from = None
+        self.stored_to = None
+
     def _make_devices(self):
         self.devices = []
         idx = 0
@@ -54,6 +58,7 @@ class Scenario(object):
             js = json.load(fp)
 
         self.from_JSON(js)
+        self.loaded_from = filename
 
 
     def to_JSON(self):
@@ -68,6 +73,7 @@ class Scenario(object):
     def save_JSON(self, filename):
         with open(filename, 'w') as fp:
             fp.write(self.to_JSON())
+        self.stored_to = filename
 
 
     def __str__(self):

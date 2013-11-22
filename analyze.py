@@ -1,4 +1,5 @@
 import sys
+import os
 from datetime import timedelta
 
 import numpy as np
@@ -31,7 +32,10 @@ def plot_each_device(sc, unctrl, cntrl):
 
 
 def plot_aggregated(sc, unctrl, ctrl, ctrl_sched):
-    t = drange(sc.t_start, sc.t_end, timedelta(minutes=1))
+    res = 1
+    if (sc.t_end - sc.t_start).total_seconds() / 60 == unctrl.shape[-1] * 15:
+        res = 15
+    t = drange(sc.t_start, sc.t_end, timedelta(minutes=res))
 
     P_el_unctrl = unctrl[:,0,:].sum(0)
     P_el_ctrl = ctrl[:,0,:].sum(0)
@@ -77,16 +81,21 @@ def plot_samples(sc):
     plt.show()
 
 
+def p(basedir, fn):
+    return os.path.join(basedir, fn)
+
+
 if __name__ == '__main__':
     sc_file = sys.argv[1]
+    bd = os.path.dirname(sc_file)
     sc = scenario_factory.Scenario()
     sc.load_JSON(sc_file)
 
-    unctrl = np.load(sc.run_unctrl_datafile)
-    pre = np.load(sc.run_pre_datafile)
-    block = np.load(sc.run_ctrl_datafile)
-    post = np.load(sc.run_post_datafile)
-    sched = np.load(sc.sched_file)
+    unctrl = np.load(p(bd, sc.run_unctrl_datafile))
+    pre = np.load(p(bd, sc.run_pre_datafile))
+    block = np.load(p(bd, sc.run_ctrl_datafile))
+    post = np.load(p(bd, sc.run_post_datafile))
+    sched = np.load(p(bd, sc.sched_file))
 
     ctrl = np.zeros(unctrl.shape)
     idx = 0
@@ -95,6 +104,7 @@ if __name__ == '__main__':
         idx += l.shape[-1]
 
     if sched.shape[-1] == unctrl.shape[-1] / 15:
+        print('Extending schedules shape by factor 15')
         sched = sched.repeat(15, axis=1)
     ctrl_sched = np.zeros((unctrl.shape[0], unctrl.shape[-1]))
     ctrl_sched = np.ma.array(ctrl_sched)

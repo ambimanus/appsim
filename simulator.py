@@ -9,6 +9,12 @@ from appliancesim.ext.device import SuccessiveSampler, HiResSampler
 from progress import PBar
 
 
+def resample(d, resolution):
+    # resample the innermost axis to 'resolution'
+    shape = tuple(d.shape[:-1]) + (int(d.shape[-1]/resolution), resolution)
+    return d.reshape(shape).sum(-1)/resolution
+
+
 def simulate(device, start, end, progress, newline=False):
     # Datenfelder
     headers = ['P_el', 'P_th', 'T', 'T_env']
@@ -42,7 +48,7 @@ def simulate(device, start, end, progress, newline=False):
     if newline:
         print()
 
-    return data
+    return resample(data, 15)
 
 
 def create_sample(device, sample_size, t_start, t_end, progress, density=0.1):
@@ -73,7 +79,7 @@ def create_sample(device, sample_size, t_start, t_end, progress, density=0.1):
         sample = sample * (-1.0)
 
     progress.update(progress.currval + (sample_size * d))
-    return modes, sample
+    return modes, resample(sample, 15)
 
 
 def run_unctrl(sc):
@@ -127,9 +133,10 @@ def run_pre(sc):
 def run_schedule(sc):
     print('--- Simulating controlled behaviour in [block_start, block_end]')
     p_sim = PBar(len(sc.devices) * (sc.i_block_end - sc.i_block_start)).start()
-    schedules = np.load(sc.sched_file)
-    samples_file = np.load(sc.run_pre_samplesfile)
-    modes_file = np.load(sc.run_pre_modesfile)
+    basedir = os.path.dirname(sc.loaded_from)
+    schedules = np.load(os.path.join(basedir, sc.sched_file))
+    samples_file = np.load(os.path.join(basedir, sc.run_pre_samplesfile))
+    modes_file = np.load(os.path.join(basedir, sc.run_pre_modesfile))
     sim_data = []
     for d, statefile, sched, modes, samples in zip(
             sc.devices, sc.state_files, schedules, modes_file, samples_file):

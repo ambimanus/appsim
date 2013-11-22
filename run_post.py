@@ -20,5 +20,5 @@ if os.path.exists(dfn):
 
 data = simulator.run_post(sc)
 np.save(dfn, data)
-sc.run_post_datafile = dfn
+sc.run_post_datafile = os.path.basename(dfn)
 sc.save_JSON(sc_file)

@@ -28,9 +28,9 @@ sim_data, modes_data, sample_data = simulator.run_pre(sc)
 np.save(sim_dfn, sim_data)
 np.save(sam_dfn, sample_data)
 np.save(mod_dfn, modes_data)
-sc.run_pre_datafile = sim_dfn
-sc.run_pre_samplesfile = sam_dfn
-sc.run_pre_modesfile = mod_dfn
+sc.run_pre_datafile = os.path.basename(sim_dfn)
+sc.run_pre_samplesfile = os.path.basename(sam_dfn)
+sc.run_pre_modesfile = os.path.basename(mod_dfn)
 sc.save_JSON(sc_file)
 
 # import matplotlib.pyplot as plt

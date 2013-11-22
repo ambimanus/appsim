@@ -61,16 +61,17 @@ def create_sample(device, sample_size, t_start, t_end, progress, density=0.1):
     sampler = device.components.sampler
     if type(sampler) == SuccessiveSampler:
         modes = None
-        sample = np.array(sampler.sample(sample_size, duration=d))
+        sample = np.array(sampler.sample(sample_size, duration=d / 15))
     elif type(sampler) == HiResSampler:
         modes, sample = np.array(sampler.sample(sample_size, duration=d)
                                 ).swapaxes(0, 1)
+        sample = resample(sample, 15)
     else:
         raise RuntimeError('unknown sampler %s' %type(sampler))
     # Add noise to prevent breaking the SVDD model due to linear dependencies
     np.random.seed(device.random.rand_int())
     scale = 0.000001 * np.max(np.abs(sample))
-    noise = np.random.normal(scale=scale, size=(sample_size, d))
+    noise = np.random.normal(scale=scale, size=sample.shape)
 
     sample = sample + noise
 
@@ -79,7 +80,7 @@ def create_sample(device, sample_size, t_start, t_end, progress, density=0.1):
         sample = sample * (-1.0)
 
     progress.update(progress.currval + (sample_size * d))
-    return modes, resample(sample, 15)
+    return modes, sample
 
 
 def run_unctrl(sc):

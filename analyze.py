@@ -71,11 +71,15 @@ def plot_aggregated(sc, unctrl, ctrl, ctrl_sched):
     fig.subplots_adjust(left=0.1, right=0.95, top=0.88, bottom=0.2)
 
 
-def plot_samples(sc):
-    sample_data = np.load(sc.run_pre_samplesfile)
+def plot_samples(sc, basedir, idx=None):
+    sample_data = np.load(p(bd, sc.run_pre_samplesfile))
+    if idx is not None:
+        sample_data = sample_data[idx].reshape((1,) + sample_data.shape[1:])
     fig, ax = plt.subplots(len(sample_data))
+    if len(sample_data) == 1:
+        ax = [ax]
     for i, samples in enumerate(sample_data):
-        t = np.arange(samples.shape[1])
+        t = np.arange(samples.shape[-1])
         for s in samples:
             ax[i].plot(t, s)
     plt.show()
@@ -90,6 +94,9 @@ if __name__ == '__main__':
     bd = os.path.dirname(sc_file)
     sc = scenario_factory.Scenario()
     sc.load_JSON(sc_file)
+
+    # plot_samples(sc, bd, 0)
+    # plt.show()
 
     unctrl = np.load(p(bd, sc.run_unctrl_datafile))
     pre = np.load(p(bd, sc.run_pre_datafile))
@@ -114,6 +121,5 @@ if __name__ == '__main__':
 
     # plot_each_device(sc, unctrl, ctrl, sched)
     plot_aggregated(sc, unctrl, ctrl, ctrl_sched)
-    # plot_samples(sc)
 
     plt.show()

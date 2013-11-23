@@ -42,9 +42,40 @@ SC_BLOCK='{
   "objective": "epex",
   "block": [10000],
   "device_templates": [
-    ["Vaillant EcoPower 1.0", 0],
+    ["Vaillant EcoPower 1.0", 5],
     ["Vaillant EcoPower 3.0", 10],
-    ["Vaillant EcoPower 4.7", 0],
+    ["Vaillant EcoPower 4.7", 5],
+    ["Vaillant EcoPower 20.0", 2],
+    ["Stiebel Eltron WPF 5", 5],
+    ["Stiebel Eltron WPF 7", 5],
+    ["Stiebel Eltron WPF 10", 10],
+    ["Stiebel Eltron WPF 13", 5],
+    ["Weishaupt WWP S 24", 1],
+    ["Weishaupt WWP S 30", 1],
+    ["Weishaupt WWP S 37", 1],
+    ["RedoxFlow 100 kWh", 0]
+  ],
+  "state_files": [],
+  "state_files_ctrl": [],
+  "sched_file": null,
+  "svsm": false
+}'
+
+SC_PEAKLOAD='{
+  "title": "Peakload-100-CHP",
+  "seed": 0,
+  "sample_size": 200,
+  "t_pre": [2010, 3, 25],
+  "t_start": [2010, 4, 1],
+  "t_block_start": [2010, 4, 2, 9],
+  "t_block_end": [2010, 4, 2, 20],
+  "t_end": [2010, 4, 4],
+  "objective": "epex",
+  "block": [100000],
+  "device_templates": [
+    ["Vaillant EcoPower 1.0", 50],
+    ["Vaillant EcoPower 3.0", 30],
+    ["Vaillant EcoPower 4.7", 20],
     ["Vaillant EcoPower 20.0", 0],
     ["Stiebel Eltron WPF 5", 0],
     ["Stiebel Eltron WPF 7", 0],
@@ -57,7 +88,8 @@ SC_BLOCK='{
   ],
   "state_files": [],
   "state_files_ctrl": [],
-  "sched_file": null
+  "sched_file": null,
+  "svsm": false
 }'
 
 # objective = ["peakshaving" | "valleyfilling" | "spreadreduce"]
@@ -87,7 +119,8 @@ SC_SPREAD='{
   ],
   "state_files": [],
   "state_files_ctrl": [],
-  "sched_file": null
+  "sched_file": null,
+  "svsm": false
 }'
 
 REV=$(python revision.py)
@@ -95,7 +128,8 @@ abort $?
 
 source /home/chh/.virtualenv/appsim/bin/activate
 abort $?
-SC_FILE=$(python prepare_scenario.py "$SC_BLOCK" "$REV")
+# SC_FILE=$(python prepare_scenario.py "$SC_BLOCK" "$REV")
+SC_FILE=$(python prepare_scenario.py "$SC_PEAKLOAD" "$REV")
 # SC_FILE=$(python prepare_scenario.py "$SC_SPREAD" "$REV")
 abort $?
 python run_unctrl.py "$SC_FILE"

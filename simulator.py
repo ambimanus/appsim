@@ -35,6 +35,8 @@ def simulate(device, start, end, progress, newline=False):
             device.step(now)
             i = now - start
             data[0][i] = device.components.engine.P_el
+            if hasattr(device.components, 'boost_heater'):
+                data[0][i] += device.components.boost_heater.P_el
             data[1][i] = device.components.engine.P_th
             data[2][i] = device.components.storage.T
             data[3][i] = device.components.heatsink.T_env
@@ -51,9 +53,8 @@ def simulate(device, start, end, progress, newline=False):
     return resample(data, 15)
 
 
-def create_sample(device, sample_size, t_start, t_end, progress, density=0.1):
-    device = device.copy()
-    device.step(t_start)
+def create_sample(d, sample_size, t_start, t_end, progress, density=1.0):
+    device = d.copy()
     device.components.sampler.setpoint_density = density
     d = (t_end - t_start)
     if d == 0:
@@ -107,7 +108,7 @@ def run_pre(sc):
     modes_data = []
     sample_data = []
     if sc.i_block_end - sc.i_block_start == 0:
-        return (np.zeros((len(sc.devices), 4, sc.i_block_start - sc.i_start)),
+        return (np.zeros((len(sc.devices), 4, (sc.i_block_start - sc.i_start) / 15)),
                 np.zeros((len(sc.devices), sc.sample_size, 0)),
                 np.zeros((len(sc.devices), sc.sample_size, 0)))
     for d in sc.devices:
@@ -181,7 +182,7 @@ def run_post(sc):
     print('--- Simulating uncontrolled behavior in [block_end, end]')
     p_sim = PBar(len(sc.devices) * (sc.i_end - sc.i_block_end)).start()
     if sc.i_block_end - sc.i_block_start == 0:
-        return np.zeros((len(sc.devices), 4, sc.i_end - sc.i_block_end))
+        return np.zeros((len(sc.devices), 4, (sc.i_end - sc.i_block_end) / 15))
     sim_data = []
     for d, statefile in zip(sc.devices, sc.state_files_ctrl):
         # Load state

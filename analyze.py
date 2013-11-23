@@ -52,6 +52,22 @@ def plot_aggregated(sc, unctrl, ctrl, ctrl_sched):
     ax[0].plot_date(t, P_el_unctrl / 1000.0, fmt='-', lw=1, label='unctrl')
     ax[0].plot_date(t, P_el_ctrl / 1000.0, fmt='-', lw=1, label='ctrl')
     ax[0].plot_date(t, P_el_sched / 1000.0, fmt='-', lw=1, label='sched')
+    # colors = [
+    #                 '#348ABD', # blue
+    #                 '#7A68A6', # purple
+    #                 '#A60628', # red
+    #                 '#467821', # green
+    #                 '#CF4457', # pink
+    #                 '#188487', # turqoise
+    #                 '#E24A33', # orange
+    #                 '#1F4A7D', # primary
+    #                 '#BF9D23', # secondary
+    #                 '#BF5B23', # complementary
+    #                ][:len(unctrl)]
+    # for (c, P_el_unctrl, P_el_ctrl, P_el_sched) in zip(colors, unctrl[:,0,:], ctrl[:,0,:], ctrl_sched):
+    #     ax[0].plot_date(t, P_el_unctrl / 1000.0, fmt='-', color=c, lw=1, label='unctrl')
+    #     ax[0].plot_date(t, P_el_ctrl / 1000.0, fmt=':', color=c, lw=1, label='ctrl')
+    #     ax[0].plot_date(t, P_el_sched / 1000.0, fmt='--', color=c, lw=1, label='sched')
     leg0 = ax[0].legend(bbox_to_anchor=(0., 1.02, 1., .102), loc=3, ncol=4,
                         borderaxespad=0.0, fancybox=False)
 
@@ -82,7 +98,6 @@ def plot_samples(sc, basedir, idx=None):
         t = np.arange(samples.shape[-1])
         for s in samples:
             ax[i].plot(t, s)
-    plt.show()
 
 
 def p(basedir, fn):
@@ -95,7 +110,7 @@ if __name__ == '__main__':
     sc = scenario_factory.Scenario()
     sc.load_JSON(sc_file)
 
-    # plot_samples(sc, bd, 0)
+    # plot_samples(sc, bd)
     # plt.show()
 
     unctrl = np.load(p(bd, sc.run_unctrl_datafile))
@@ -105,6 +120,7 @@ if __name__ == '__main__':
     sched = np.load(p(bd, sc.sched_file))
 
     ctrl = np.zeros(unctrl.shape)
+    print()
     idx = 0
     for l in (pre, block, post):
         ctrl[:,:,idx:idx + l.shape[-1]] = l

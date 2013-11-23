@@ -99,7 +99,7 @@ class Test(Scenario):
         self.t_end = datetime(2010, 4, 4)
 
         self.block = [0.0 for i in range(
-            (self.t_block_end - self.t_block_start).total_seconds() / 60 / 60)]
+            int((self.t_block_end - self.t_block_start).total_seconds() / 60 / 60))]
 
         self.sample_size = 100
         self.seed = seed
@@ -153,17 +153,21 @@ class Large(Scenario):
 
 
 if __name__ == '__main__':
+    import pdb
+    pdb.set_trace()
     # # Reproduzierbarkeit
     # np.random.seed(seed)
 
-    # sc = Test(0)
+    sc = Test(0)
+    sc.svsm = True
+    sc.svsm = False
     # sc.save_JSON('/tmp/sc.json')
 
-    # sc1 = Scenario()
+    sc1 = Scenario()
     # sc1.load_JSON('/tmp/sc.json')
 
-    sc, sc1 = Test(0), Test(0)
-    print(sc)
+    # sc, sc1 = Test(0), Test(0)
+    # print(sc)
     import sys
     sys.exit()
 

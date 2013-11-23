@@ -106,7 +106,7 @@ def create_heater(seed, id, model, T_min, T_max, storage_weight, storage_loss,
     if model in list(CHP_MODELS.keys()):
         # Erstelle BHKW
         device = Device('chp', id, [Consumer(), HeatDemand(), Storage(),
-                chp.Engine(), Scheduler(), chp.StubBoostHeater(),
+                chp.Engine(), Scheduler(), chp.BoostHeater(),
                 SuccessiveSampler()], seed=seed)
         # Minimale Verweilzeit je gefahrenem Betriebsmodus
         device.components.engine.min_step_duration = 60
@@ -117,7 +117,7 @@ def create_heater(seed, id, model, T_min, T_max, storage_weight, storage_loss,
         # Erstelle Wärmepumpe
         device = Device('heatpump', id, [Consumer(), HeatDemand(),
                 hp.RandomHeatSource(), Storage(), hp.Engine(), Scheduler(),
-                SuccessiveSampler()], seed=seed)
+                chp.BoostHeater(), SuccessiveSampler()], seed=seed)
     else:
         raise(TypeError('unknown model:', model))
 
@@ -229,6 +229,8 @@ def create_heater(seed, id, model, T_min, T_max, storage_weight, storage_loss,
     # Hysterese-Korridor
     device.components.engine.T_min = T_min
     device.components.engine.T_max = T_max
+    device.components.boost_heater.T_min = T_min
+    device.components.boost_heater.P_el_nominal = storage_weight / 200  # kW
     # Warmwasserspeicher
     device.components.storage.weight = \
             device.random.normal(storage_weight, S_noise * storage_weight)

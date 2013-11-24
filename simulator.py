@@ -163,6 +163,9 @@ def run_schedule(sc):
             # Set operational mode
             d.components.direct_scheduler.schedule = mode.tolist()
         else:
+            if d.typename == 'heatpump':
+                # This is a consumer, so negate P_el
+                sched = sched * (-1.0)
             # No modes available, use power schedule
             d.components.scheduler.schedule = sched.tolist()
         # Simulate

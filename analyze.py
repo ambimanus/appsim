@@ -1,6 +1,7 @@
 import sys
 import os
-from datetime import timedelta
+import csv
+from datetime import datetime, timedelta
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -31,7 +32,7 @@ def plot_each_device(sc, unctrl, cntrl):
         fig.subplots_adjust(left=0.1, right=0.95, top=0.88, bottom=0.2)
 
 
-def plot_aggregated(sc, unctrl, ctrl, ctrl_sched):
+def plot_aggregated(sc, bd, unctrl, ctrl, ctrl_sched):
     res = 1
     if (sc.t_end - sc.t_start).total_seconds() / 60 == unctrl.shape[-1] * 15:
         res = 15
@@ -44,7 +45,10 @@ def plot_aggregated(sc, unctrl, ctrl, ctrl_sched):
     T_storage_unctrl = unctrl[:,2,:]
     T_storage_ctrl = ctrl[:,2,:]
 
-    fig, ax = plt.subplots(3, sharex=True)
+    if hasattr(sc, 'slp_file'):
+        fig, ax = plt.subplots(4, sharex=True)
+    else:
+        fig, ax = plt.subplots(3, sharex=True)
     ax[0].set_ylabel('P$_{el}$ [kW]')
     ymax = max(P_el_unctrl.max(), P_el_ctrl.max()) / 1000.0
     ymin = min(P_el_unctrl.min(), P_el_ctrl.min()) / 1000.0
@@ -67,7 +71,7 @@ def plot_aggregated(sc, unctrl, ctrl, ctrl_sched):
     # for (c, P_el_unctrl, P_el_ctrl, P_el_sched) in zip(colors, unctrl[:,0,:], ctrl[:,0,:], ctrl_sched):
     #     ax[0].plot_date(t, P_el_unctrl / 1000.0, fmt='-', color=c, lw=1, label='unctrl')
     #     ax[0].plot_date(t, P_el_ctrl / 1000.0, fmt=':', color=c, lw=1, label='ctrl')
-    #     ax[0].plot_date(t, P_el_sched / 1000.0, fmt='--', color=c, lw=1, label='sched')
+    #     ax[0].plot_date(t, P_el_sched / 1000.0, fmt='--x', color=c, lw=1, label='sched')
     leg0 = ax[0].legend(bbox_to_anchor=(0., 1.02, 1., .102), loc=3, ncol=4,
                         borderaxespad=0.0, fancybox=False)
 
@@ -81,10 +85,28 @@ def plot_aggregated(sc, unctrl, ctrl, ctrl_sched):
         ax[2].plot_date(t, v - 273.0, fmt='-', color='k', alpha=0.2, lw=1)
     ax[2].plot_date(t, T_storage_ctrl.mean(0) - 273.0, fmt='-', color='k', lw=1)
 
+    if hasattr(sc, 'slp_file'):
+        slp = _read_slp(sc, bd)
+        diff_ctrl = (P_el_ctrl - P_el_unctrl) / 1000.0
+        diff_sched = (P_el_sched - P_el_unctrl) / 1000.0
+        ax[3].set_ylabel('P$_{el}$ [kW]')
+        ymax = max(slp.max(), (slp + diff_ctrl).max(), (slp + diff_sched).max())
+        ymin = min(slp.min(), (slp + diff_ctrl).min(), (slp + diff_sched).min())
+        ax[3].set_ylim(ymin - (ymin * 0.1), ymax + (ymax * 0.1))
+        ax[3].plot_date(t, slp, fmt='-', lw=1, label='H0')
+        ax[3].plot_date(t, slp + diff_ctrl, fmt='-', lw=1, label='H0*')
+        ax[3].plot_date(t, slp + diff_sched, fmt='-', lw=1, label='H0* (sched only)')
+        leg3 = ax[3].legend(bbox_to_anchor=(0., 1.02, 1., .102), loc=3, ncol=4,
+                            borderaxespad=0.0, fancybox=False)
+        for label in leg3.get_texts():
+            label.set_fontsize('x-small')
+
     fig.autofmt_xdate()
     for label in leg0.get_texts():
         label.set_fontsize('x-small')
     fig.subplots_adjust(left=0.1, right=0.95, top=0.88, bottom=0.2)
+
+    return fig
 
 
 def plot_samples(sc, basedir, idx=None):
@@ -98,6 +120,69 @@ def plot_samples(sc, basedir, idx=None):
         t = np.arange(samples.shape[-1])
         for s in samples:
             ax[i].plot(t, s)
+
+
+def norm(minimum, maximum, value):
+    # return value
+    if maximum == minimum:
+        return maximum
+    return (value - minimum) / (maximum - minimum)
+
+
+def _read_slp(sc, bd):
+    # Read csv data
+    slp = []
+    found = False
+    with open(sc.slp_file, 'r', encoding='latin-1') as f:
+        reader = csv.reader(f, delimiter=';')
+        for row in reader:
+            if not row:
+                continue
+            if not found and row[0] == 'Datum':
+                found = True
+            elif found:
+                date = datetime.strptime('_'.join(row[:2]), '%d.%m.%Y_%H:%M:%S')
+                if date < sc.t_start:
+                    continue
+                elif date >= sc.t_end:
+                    break
+                slp.append(float(row[2].replace(',', '.')))
+    slp = np.array(slp)
+    # Scale values
+    # if hasattr(sc, 'run_unctrl_datafile'):
+    #    slp_norm = norm(slp.min(), slp.max(), slp)
+    #    unctrl = np.load(p(bd, sc.run_unctrl_datafile)).sum(0) / 1000
+    #    slp = slp_norm * (unctrl.max() - unctrl.min()) + unctrl.min()
+    MS_day_mean = 13600   # kWh, derived from SmartNord Scenario document
+    MS_15_mean = MS_day_mean / 96
+    slp = slp / slp.mean() * MS_15_mean
+
+    return slp
+
+
+def plot_slp(sc, bd):
+    slp = _read_slp(sc, bd)
+
+    res = 1
+    if (sc.t_end - sc.t_start).total_seconds() / 60 == slp.shape[-1] * 15:
+        res = 15
+    t = drange(sc.t_start, sc.t_end, timedelta(minutes=res))
+
+    fig, ax = plt.subplots()
+    ax.set_ylabel('P$_{el}$ [kW]')
+    ymax = max(slp.max(), slp.max())
+    ymin = min(slp.min(), slp.min())
+    ax.set_ylim(ymin - (ymin * 0.1), ymax + (ymax * 0.1))
+    ax.plot_date(t, slp, fmt='-', lw=1, label='H0')
+    leg0 = ax.legend(bbox_to_anchor=(0., 1.02, 1., .102), loc=3, ncol=4,
+                        borderaxespad=0.0, fancybox=False)
+
+    fig.autofmt_xdate()
+    for label in leg0.get_texts():
+        label.set_fontsize('x-small')
+    fig.subplots_adjust(left=0.1, right=0.95, top=0.88, bottom=0.2)
+
+    return fig
 
 
 def p(basedir, fn):
@@ -136,6 +221,13 @@ if __name__ == '__main__':
     ctrl_sched[:,pre.shape[-1] + sched.shape[-1]:] = np.ma.masked
 
     # plot_each_device(sc, unctrl, ctrl, sched)
-    plot_aggregated(sc, unctrl, ctrl, ctrl_sched)
+    fig = plot_aggregated(sc, bd, unctrl, ctrl, ctrl_sched)
+    fig.savefig(p(bd, sc.title) + '.pdf')
+    fig.savefig(p(bd, sc.title) + '.png', dpi=300)
+
+    # sc.slp_file = '/home/chh/data/crystal-chp/slp/2010_slp_profile_eon_mitte_ag/H0 - Haushalt.csv'
+
+    # if hasattr(sc, 'slp_file'):
+    #     plot_slp(sc, bd)
 
     plt.show()

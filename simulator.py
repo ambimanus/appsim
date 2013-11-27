@@ -53,7 +53,14 @@ def simulate(device, start, end, progress, newline=False):
     return resample(data, 15)
 
 
-def create_sample(d, sample_size, t_start, t_end, progress, density=1.0):
+def create_sample(d, sample_size, t_start, t_end, progress, density=None):
+    if density is None:
+        if d.typename == 'heatpump':
+            density = 0.25
+        elif d.typename == 'chp':
+            density = 0.75
+        else:
+            raise RuntimeError('unknown type: %s' % d.typename)
     device = d.copy()
     device.components.sampler.setpoint_density = density
     d = (t_end - t_start)

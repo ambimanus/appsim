@@ -62,7 +62,7 @@ SC_BLOCK='{
 }'
 
 SC_PEAKLOAD='{
-  "title": "Peakload-120-HP-small-SVSM",
+  "title": "Peakload-130-hybrid-SVSM",
   "seed": 0,
   "sample_size": 200,
   "t_pre": [2010, 3, 25],
@@ -71,16 +71,16 @@ SC_PEAKLOAD='{
   "t_block_end": [2010, 4, 2, 20],
   "t_end": [2010, 4, 4],
   "objective": "epex",
-  "block": [-100000],
+  "block": [100000],
   "device_templates": [
-    ["Vaillant EcoPower 1.0", 0],
-    ["Vaillant EcoPower 3.0", 0],
-    ["Vaillant EcoPower 4.7", 0],
+    ["Vaillant EcoPower 1.0", 40],
+    ["Vaillant EcoPower 3.0", 30],
+    ["Vaillant EcoPower 4.7", 30],
     ["Vaillant EcoPower 20.0", 0],
-    ["Stiebel Eltron WPF 5", 50],
-    ["Stiebel Eltron WPF 7", 50],
-    ["Stiebel Eltron WPF 10", 10],
-    ["Stiebel Eltron WPF 13", 10],
+    ["Stiebel Eltron WPF 5", 30],
+    ["Stiebel Eltron WPF 7", 0],
+    ["Stiebel Eltron WPF 10", 0],
+    ["Stiebel Eltron WPF 13", 0],
     ["Weishaupt WWP S 24", 0],
     ["Weishaupt WWP S 30", 0],
     ["Weishaupt WWP S 37", 0],

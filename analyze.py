@@ -36,26 +36,44 @@ def plot_aggregated(sc, bd, unctrl, ctrl, ctrl_sched):
     res = 1
     if (sc.t_end - sc.t_start).total_seconds() / 60 == unctrl.shape[-1] * 15:
         res = 15
-    t = drange(sc.t_start, sc.t_end, timedelta(minutes=res))
+    t_day_start = sc.t_block_start - timedelta(hours=sc.t_block_start.hour,
+                                         minutes=sc.t_block_start.minute)
+    t = drange(t_day_start, sc.t_end, timedelta(minutes=res))
+    skip = (t_day_start - sc.t_start).total_seconds() / 60 / res
+    i_block_start = (sc.t_block_start - t_day_start).total_seconds() / 60 / res
+    i_block_end = (sc.t_block_end - t_day_start).total_seconds() / 60 / res
 
-    P_el_unctrl = unctrl[:,0,:].sum(0)
-    P_el_ctrl = ctrl[:,0,:].sum(0)
-    P_el_sched = ctrl_sched.sum(0)
+    P_el_unctrl = unctrl[:,0,skip:].sum(0)
+    P_el_ctrl = ctrl[:,0,skip:].sum(0)
+    P_el_sched = ctrl_sched[:,skip:].sum(0)
 
-    T_storage_unctrl = unctrl[:,2,:]
-    T_storage_ctrl = ctrl[:,2,:]
+    T_storage_ctrl = ctrl[:,2,skip:]
+
+    P_el_ctrl_fill_x = np.array([t[0]] + list(t) + [t[-1]])
+    P_el_ctrl_fill_y = np.array([0] + list(P_el_ctrl) + [0]) / 1000.0
+    # import pdb
+    # pdb.set_trace()
 
     if hasattr(sc, 'slp_file'):
-        fig, ax = plt.subplots(4, sharex=True)
-    else:
         fig, ax = plt.subplots(3, sharex=True)
-    ax[0].set_ylabel('P$_{el}$ [kW]')
+    else:
+        fig, ax = plt.subplots(2, sharex=True)
+    ax[0].set_ylabel('P$_{\mathrm{el}}$ [kW]')
     ymax = max(P_el_unctrl.max(), P_el_ctrl.max()) / 1000.0
     ymin = min(P_el_unctrl.min(), P_el_ctrl.min()) / 1000.0
     ax[0].set_ylim(ymin - (ymin * 0.1), ymax + (ymax * 0.1))
-    ax[0].plot_date(t, P_el_unctrl / 1000.0, fmt='-', lw=1, label='unctrl')
-    ax[0].plot_date(t, P_el_ctrl / 1000.0, fmt='-', lw=1, label='ctrl')
-    ax[0].plot_date(t, P_el_sched / 1000.0, fmt='-', lw=1, label='sched')
+    xspace = (t[-1] - t[-2])
+    ax[0].set_xlim(t[0], t[-1] + xspace)
+    # ax[0].axvline(t[i_block_start], ls='--', color='0.5')
+    # ax[0].axvline(t[i_block_end], ls='--', color='0.5')
+    ax[0].axvspan(t[i_block_start], t[i_block_end], fc='0.5', lw=0.0, alpha=0.1)
+    ax[0].axvline(t[0], ls='-', color='0.5', lw=0.5)
+    ax[0].axvline(t[96], ls='-', color='0.5', lw=0.5)
+    ax[0].axvline(t[-1], ls='-', color='0.5', lw=0.5)
+    l_unctrl, = ax[0].plot_date(t, P_el_unctrl / 1000.0, fmt='--', color='#6581A4', lw=0.5)
+    # l_ctrl, = ax[0].plot_date(t, P_el_ctrl / 1000.0, fmt='-', lw=0.5, label='ctrl')
+    l_ctrl, = ax[0].fill(P_el_ctrl_fill_x, P_el_ctrl_fill_y, fc='#1F4A7D', lw=0.0, alpha=0.5)
+    l_sched, = ax[0].plot_date(t, P_el_sched / 1000.0, fmt='-', color='#6581A4', lw=0.5)
     # colors = [
     #                 '#348ABD', # blue
     #                 '#7A68A6', # purple
@@ -67,44 +85,51 @@ def plot_aggregated(sc, bd, unctrl, ctrl, ctrl_sched):
     #                 '#1F4A7D', # primary
     #                 '#BF9D23', # secondary
     #                 '#BF5B23', # complementary
+    #                 '#94A4B6', # primaryA
+    #                 '#6581A4', # primaryB
+    #                 '#29415E', # primaryC
+    #                 '#0A2A51', # primaryD
     #                ][:len(unctrl)]
     # for (c, P_el_unctrl, P_el_ctrl, P_el_sched) in zip(colors, unctrl[:,0,:], ctrl[:,0,:], ctrl_sched):
     #     ax[0].plot_date(t, P_el_unctrl / 1000.0, fmt='-', color=c, lw=1, label='unctrl')
     #     ax[0].plot_date(t, P_el_ctrl / 1000.0, fmt=':', color=c, lw=1, label='ctrl')
     #     ax[0].plot_date(t, P_el_sched / 1000.0, fmt='--x', color=c, lw=1, label='sched')
-    leg0 = ax[0].legend(bbox_to_anchor=(0., 1.02, 1., .102), loc=3, ncol=4,
-                        borderaxespad=0.0, fancybox=False)
 
-    ax[1].set_ylabel('T$_{storage}$ unctrl [\\textdegree C]')
-    for v in T_storage_unctrl:
-        ax[1].plot_date(t, v - 273.0, fmt='-', color='k', alpha=0.2, lw=1)
-    ax[1].plot_date(t, T_storage_unctrl.mean(0) - 273.0, fmt='-', color='k', lw=1)
-
-    ax[2].set_ylabel('T$_{storage}$ ctrl [\\textdegree C]')
+    ymax = T_storage_ctrl.max() - 273
+    ymin = T_storage_ctrl.min() - 273
+    ax[1].set_ylim(ymin - (ymin * 0.01), ymax + (ymax * 0.01))
+    ax[1].set_ylabel('T$_{\mathrm{storage}}\;[^{\circ}\mathrm{C}]$', labelpad=9)
+    ax[1].axvspan(t[i_block_start], t[i_block_end], fc='0.5', lw=0.0, alpha=0.1)
+    ax[1].axvline(t[0], ls='-', color='0.5', lw=0.5)
+    ax[1].axvline(t[96], ls='-', color='0.5', lw=0.5)
+    ax[1].axvline(t[-1], ls='-', color='0.5', lw=0.5)
     for v in T_storage_ctrl:
-        ax[2].plot_date(t, v - 273.0, fmt='-', color='k', alpha=0.2, lw=1)
-    ax[2].plot_date(t, T_storage_ctrl.mean(0) - 273.0, fmt='-', color='k', lw=1)
+        ax[1].plot_date(t, v - 273.0, fmt='-', color='#94A4B6', alpha=0.25, lw=0.5)
+    l_T_med, = ax[1].plot_date(t, T_storage_ctrl.mean(0) - 273.0, fmt='-', color='#94A4B6', alpha=0.75, lw=1.5)
 
     if hasattr(sc, 'slp_file'):
         slp = _read_slp(sc, bd)
         diff_ctrl = (P_el_ctrl - P_el_unctrl) / 1000.0
         diff_sched = (P_el_sched - P_el_unctrl) / 1000.0
-        ax[3].set_ylabel('P$_{el}$ [kW]')
+        ax[2].set_ylabel('P$_{el}$ [kW]')
         ymax = max(slp.max(), (slp + diff_ctrl).max(), (slp + diff_sched).max())
         ymin = min(slp.min(), (slp + diff_ctrl).min(), (slp + diff_sched).min())
-        ax[3].set_ylim(ymin - (ymin * 0.1), ymax + (ymax * 0.1))
-        ax[3].plot_date(t, slp, fmt='-', lw=1, label='H0')
-        ax[3].plot_date(t, slp + diff_ctrl, fmt='-', lw=1, label='H0*')
-        ax[3].plot_date(t, slp + diff_sched, fmt='-', lw=1, label='H0* (sched only)')
-        leg3 = ax[3].legend(bbox_to_anchor=(0., 1.02, 1., .102), loc=3, ncol=4,
+        ax[2].set_ylim(ymin - (ymin * 0.1), ymax + (ymax * 0.1))
+        ax[2].plot_date(t, slp, fmt='-', lw=1, label='H0')
+        ax[2].plot_date(t, slp + diff_ctrl, fmt='-', lw=1, label='H0*')
+        ax[2].plot_date(t, slp + diff_sched, fmt='-', lw=1, label='H0* (sched only)')
+        leg3 = ax[2].legend(bbox_to_anchor=(0., 1.02, 1., .102), loc=3, ncol=4,
                             borderaxespad=0.0, fancybox=False)
         for label in leg3.get_texts():
             label.set_fontsize('x-small')
 
     fig.autofmt_xdate()
-    for label in leg0.get_texts():
-        label.set_fontsize('x-small')
-    fig.subplots_adjust(left=0.1, right=0.95, top=0.88, bottom=0.2)
+    leg0 = ax[1].legend([l_sched, l_unctrl, l_ctrl, l_T_med],
+                        ['Einsatzplan', 'ungesteuert', 'gesteuert', 'Speichertemperaturen (Median)'],
+                        bbox_to_anchor=(0., 1.03, 1., .103), loc=8, ncol=4,
+                        handletextpad=0.2, mode='expand', handlelength=3,
+                        borderaxespad=0.25, fancybox=False, fontsize='x-small')
+    fig.subplots_adjust(left=0.1, right=0.95, top=0.98, bottom=0.2, hspace=0.3)
 
     return fig
 

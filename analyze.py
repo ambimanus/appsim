@@ -6,6 +6,7 @@ from datetime import datetime, timedelta
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.dates import drange
+from matplotlib.patches import Rectangle
 
 import scenario_factory
 
@@ -32,10 +33,7 @@ def plot_each_device(sc, unctrl, cntrl):
         fig.subplots_adjust(left=0.1, right=0.95, top=0.88, bottom=0.2)
 
 
-def plot_aggregated(sc, bd, unctrl, ctrl, ctrl_sched):
-    res = 1
-    if (sc.t_end - sc.t_start).total_seconds() / 60 == unctrl.shape[-1] * 15:
-        res = 15
+def plot_aggregated(sc, bd, unctrl, ctrl, ctrl_sched, res=1):
     t_day_start = sc.t_block_start - timedelta(hours=sc.t_block_start.hour,
                                          minutes=sc.t_block_start.minute)
     t = drange(t_day_start, sc.t_end, timedelta(minutes=res))
@@ -49,16 +47,16 @@ def plot_aggregated(sc, bd, unctrl, ctrl, ctrl_sched):
 
     T_storage_ctrl = ctrl[:,2,skip:]
 
-    P_el_ctrl_fill_x = np.array([t[0]] + list(t) + [t[-1]])
-    P_el_ctrl_fill_y = np.array([0] + list(P_el_ctrl) + [0])
+    ft = np.array([t[0]] + list(np.repeat(t[1:-1], 2)) + [t[-1]])
+    P_el_ctrl_fill = np.repeat(P_el_ctrl[:-1], 2)
 
     if hasattr(sc, 'slp_file'):
         fig, ax = plt.subplots(3, sharex=True)
     else:
         fig, ax = plt.subplots(2, sharex=True)
     ax[0].set_ylabel('P$_{\mathrm{el}}$ [kW]')
-    ymax = max(P_el_unctrl.max(), P_el_ctrl_fill_y.max()) / 1000.0
-    ymin = min(P_el_unctrl.min(), P_el_ctrl_fill_y.min()) / 1000.0
+    ymax = max(P_el_unctrl.max(), P_el_ctrl_fill.max(), 0) / 1000.0
+    ymin = min(P_el_unctrl.min(), P_el_ctrl_fill.min(), 0) / 1000.0
     ax[0].set_ylim(ymin - abs(ymin * 0.1), ymax + abs(ymax * 0.1))
     xspace = (t[-1] - t[-2])
     ax[0].set_xlim(t[0], t[-1] + xspace)
@@ -66,12 +64,13 @@ def plot_aggregated(sc, bd, unctrl, ctrl, ctrl_sched):
     # ax[0].axvline(t[i_block_end], ls='--', color='0.5')
     ax[0].axvspan(t[i_block_start], t[i_block_end], fc='0.5', lw=0.0, alpha=0.1)
     ax[0].axvline(t[0], ls='-', color='0.5', lw=0.5)
-    ax[0].axvline(t[96], ls='-', color='0.5', lw=0.5)
-    ax[0].axvline(t[-1], ls='-', color='0.5', lw=0.5)
-    l_unctrl, = ax[0].plot_date(t, P_el_unctrl / 1000.0, fmt='--', color='#6581A4', lw=0.5)
-    # l_ctrl, = ax[0].plot_date(t, P_el_ctrl / 1000.0, fmt='-', lw=0.5, label='ctrl')
-    l_ctrl, = ax[0].fill(P_el_ctrl_fill_x, P_el_ctrl_fill_y / 1000.0, fc='#1F4A7D', lw=0.0, alpha=0.5)
-    l_sched, = ax[0].plot_date(t, P_el_sched / 1000.0, fmt='-', color='#6581A4', lw=0.75)
+    ax[0].axvline(t[len(t)/2], ls='-', color='0.5', lw=0.5)
+    l_unctrl, = ax[0].plot_date(t, P_el_unctrl / 1000.0, fmt=':', color='#6581A4', drawstyle='steps-post', lw=0.75)
+    l_unctrl.set_dashes([1.0, 1.0])
+    ax[0].fill_between(ft, P_el_ctrl_fill / 1000.0, color='#1F4A7D', lw=0.0, alpha=0.5)
+    # Create proxy artist for the legend handle
+    l_ctrl = Rectangle((0, 0), 1, 1, fc='#1F4A7D', lw=0.0, alpha=0.5)
+    l_sched, = ax[0].plot_date(t, P_el_sched / 1000.0, fmt='-', color='#6581A4', drawstyle='steps-post', lw=0.75)
     # colors = [
     #                 '#348ABD', # blue
     #                 '#7A68A6', # purple
@@ -99,8 +98,7 @@ def plot_aggregated(sc, bd, unctrl, ctrl, ctrl_sched):
     ax[1].set_ylabel('T$_{\mathrm{storage}}\;[^{\circ}\mathrm{C}]$', labelpad=9)
     ax[1].axvspan(t[i_block_start], t[i_block_end], fc='0.5', lw=0.0, alpha=0.1)
     ax[1].axvline(t[0], ls='-', color='0.5', lw=0.5)
-    ax[1].axvline(t[96], ls='-', color='0.5', lw=0.5)
-    ax[1].axvline(t[-1], ls='-', color='0.5', lw=0.5)
+    ax[1].axvline(t[len(t)/2], ls='-', color='0.5', lw=0.5)
     for v in T_storage_ctrl:
         ax[1].plot_date(t, v - 273.0, fmt='-', color='#94A4B6', alpha=0.25, lw=0.5)
     l_T_med, = ax[1].plot_date(t, T_storage_ctrl.mean(0) - 273.0, fmt='-', color='#94A4B6', alpha=0.75, lw=1.5)
@@ -219,6 +217,12 @@ def p(basedir, fn):
     return os.path.join(basedir, fn)
 
 
+def resample(d, resolution):
+    # resample the innermost axis to 'resolution'
+    shape = tuple(d.shape[:-1]) + (int(d.shape[-1]/resolution), resolution)
+    return d.reshape(shape).sum(-1)/resolution
+
+
 if __name__ == '__main__':
     sc_file = sys.argv[1]
     bd = os.path.dirname(sc_file)
@@ -251,7 +255,24 @@ if __name__ == '__main__':
     ctrl_sched[:,pre.shape[-1] + sched.shape[-1]:] = np.ma.masked
 
     # plot_each_device(sc, unctrl, ctrl, sched)
-    fig = plot_aggregated(sc, bd, unctrl, ctrl, ctrl_sched)
+    minutes = (sc.t_end - sc.t_start).total_seconds() / 60
+    assert unctrl.shape[-1] == ctrl.shape[-1] == ctrl_sched.shape[-1]
+    shape = unctrl.shape[-1]
+    if minutes == shape:
+        print('data is 1-minute resolution, so resample by 60')
+        res = 60
+    elif minutes == shape * 15:
+        print('data is 15-minute resolution, so resample by 4')
+        res = 4
+    elif minutes == shape * 60:
+        print('data is 60-minute resolution, all fine')
+        res = 1
+    else:
+        raise RuntimeError('unsupported data resolution: %.2f' % (minutes / shape))
+    unctrl = resample(unctrl, res)
+    ctrl = resample(ctrl, res)
+    ctrl_sched = resample(ctrl_sched, res)
+    fig = plot_aggregated(sc, bd, unctrl, ctrl, ctrl_sched, res=60)
     fig.savefig(p(bd, sc.title) + '.pdf')
     fig.savefig(p(bd, sc.title) + '.png', dpi=300)
 

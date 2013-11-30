@@ -91,6 +91,8 @@ def stats(fn):
     P_el_ctrl = ctrl[:,0,skip:].sum(0)
     P_el_sched = ctrl_sched[:,skip:].sum(0)
 
+    T_storage_ctrl = ctrl[:,2,skip:]
+
     # Stats
     target = np.ma.zeros((minutes / 60 - skip,))
     target[:i_block_start] = np.ma.masked
@@ -122,8 +124,28 @@ def stats(fn):
             perf_abs =  100 - min(100, max(0, perf_abs - 100))
         st.append(perf_abs)
         print('obj(%s, %s) = %.2f kW (%.2f %%)' % (tname, dname, diff, perf_abs))
+
+
+    # Synchronism
+    syncs = []
+    pairs = [
+        (i_block_start, 'block_start'),
+        (i_block_end, 'block_end'),
+        (23, 'day_end'),
+        (47, 'sim_end'),
+    ]
+    for timestamp, name in pairs:
+        s = sync(T_storage_ctrl[:,timestamp] - 273)
+        syncs.append(s)
+        print('sync(%s) = %.2f' % (name, s))
+
     print()
-    return st
+    return st, syncs
+
+
+def sync(data):
+    hist, edges = np.histogram(data, len(data))
+    return (max(hist) - 1) / (len(data) - 1)
 
 
 def autolabel(ax, rects):
@@ -135,7 +157,16 @@ def autolabel(ax, rects):
                 color=PRIM, fontsize=5)
 
 
-def plot(names, target_sched, target_ctrl, target_unctrl, sched_ctrl, sched_unctrl, unctrl_ctrl):
+def autolabel_sync(ax, rects):
+    # attach some text labels
+    for rect in rects:
+        height = rect.get_height()
+        pos = rect.get_x()+rect.get_width()/2.
+        ax.text(pos, 1.05 * height, '%.2f \\%%' % height, ha='center', va='bottom',
+                color=PRIM, fontsize=6)
+
+
+def plot_stats(names, target_sched, target_ctrl, target_unctrl, sched_ctrl, sched_unctrl, unctrl_ctrl):
     import matplotlib.pyplot as plt
     from matplotlib.ticker import FixedLocator
 
@@ -146,7 +177,7 @@ def plot(names, target_sched, target_ctrl, target_unctrl, sched_ctrl, sched_unct
     ax0 = fig.add_subplot(211)
     ax0.set_xlim(-0.5, x[-1] + 0.5)
     ax0.set_ylim(50, 100)
-    ax0.set_ylabel(r"""Einsatzplang\"{u}te [\%]""", fontsize='small')
+    ax0.set_ylabel(r"""Einsatzplanguete [\%]""", fontsize='small')
     ax0.grid(False, which='major', axis='x')
     bars = ax0.bar(x, target_sched, align='center', width=0.5, facecolor=PRIM+(0.5,), edgecolor=EC)
     autolabel(ax0, bars)
@@ -163,6 +194,46 @@ def plot(names, target_sched, target_ctrl, target_unctrl, sched_ctrl, sched_unct
     ax1.set_xticklabels(names, fontsize='xx-small', rotation=45, rotation_mode='anchor', ha='right')
 
     plt.show()
+    return fig
+
+
+def plot_syncs(names,
+               sync_block_start, sync_block_end, sync_day_end, sync_sim_end):
+    import matplotlib.pyplot as plt
+    from matplotlib.ticker import FixedLocator, MaxNLocator
+
+    fig = plt.figure(figsize=(6.39, 8))
+    fig.subplots_adjust(bottom=0.1, hspace=0.6)
+    data = np.array(
+        [sync_block_start, sync_block_end, sync_day_end, sync_sim_end]).T
+    x = np.arange(data.shape[-1])
+
+    for i in range(len(names)):
+        ax = fig.add_subplot(len(names), 1, i + 1)
+        ax.set_xlim(-0.5, x[-1] + 0.5)
+        ax.set_ylim(0, 0.3)
+        ax.set_ylabel('$f_a$', fontsize='small')
+        plt.text(0.5, 1.08, names[i], fontsize='x-small', color='#555555',
+                 ha='center', transform=ax.transAxes)
+        ax.grid(False, which='major', axis='x')
+        bars = ax.bar(x, data[i], align='center', width=0.5, facecolor=PRIM+(0.5,), edgecolor=EC)
+        autolabel_sync(ax, bars)
+        ax.yaxis.set_major_locator(MaxNLocator(nbins=3))
+        plt.setp(ax.get_yticklabels(), fontsize='small')
+        if i < len(names) - 1:
+            plt.setp(ax.get_xticklabels(), visible=False)
+        else:
+            xticks = [
+                '$t^{\mathrm{block}}_{\mathrm{start}}$',
+                '$t^{\mathrm{block}}_{\mathrm{end}}$',
+                '$t^{\mathrm{trade}}_{\mathrm{end}}$',
+                '$t^{\mathrm{sim}}_{\mathrm{end}}$',
+            ]
+            ax.xaxis.set_major_locator(FixedLocator(x))
+            ax.set_xticklabels(xticks, fontsize='small')
+
+    plt.show()
+    return fig
 
 
 if __name__ == '__main__':
@@ -170,11 +241,24 @@ if __name__ == '__main__':
     target_sched, target_ctrl, target_unctrl = [], [], []
     sched_ctrl, sched_unctrl = [], []
     unctrl_ctrl = []
+    sync_block_start, sync_block_end = [], []
+    sync_day_end, sync_sim_end = [], []
     for dn in sys.argv[1:]:
         if os.path.isdir(dn):
+            st, syncs = stats(p(dn, '0.json'))
             for l, d in zip((names, target_sched, target_ctrl, target_unctrl,
                              sched_ctrl, sched_unctrl, unctrl_ctrl),
-                            stats(p(dn, '0.json'))):
+                            st):
                 l.append(d)
-    plot(names, target_sched, target_ctrl, target_unctrl, sched_ctrl,
-         sched_unctrl, unctrl_ctrl)
+            for l, d in zip((sync_block_start, sync_block_end,
+                             sync_day_end, sync_sim_end),
+                            syncs):
+                l.append(d)
+
+    fig = plot_stats(names, target_sched, target_ctrl, target_unctrl,
+                     sched_ctrl, sched_unctrl, unctrl_ctrl)
+    fig.savefig(p(os.path.split(dn)[0], 'stats.pdf'))
+
+    fig = plot_syncs(names, sync_block_start, sync_block_end, sync_day_end,
+                     sync_sim_end)
+    fig.savefig(p(os.path.split(dn)[0], 'sync.pdf'))

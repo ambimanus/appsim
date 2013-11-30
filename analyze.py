@@ -14,7 +14,9 @@ import scenario_factory
 # http://www.javascripter.net/faq/hextorgb.htm
 PRIMA = (148/256, 164/256, 182/256)
 PRIMB = (101/256, 129/256, 164/256)
-PRIM = (31/256, 74/256, 125/256)
+PRIM  = ( 31/256,  74/256, 125/256)
+PRIMC = ( 41/256,  65/256,  94/256)
+PRIMD = ( 10/256,  42/256,  81/256)
 EC = (1, 1, 1, 0)
 GRAY = (0.5, 0.5, 0.5)
 WHITE = (1, 1, 1)
@@ -43,6 +45,9 @@ def plot_each_device(sc, unctrl, cntrl):
 
 
 def plot_aggregated(sc, bd, unctrl, ctrl, ctrl_sched, res=1):
+    SLP = False
+    if hasattr(sc, 'slp_file'):
+        SLP = True
     t_day_start = sc.t_block_start - timedelta(hours=sc.t_block_start.hour,
                                          minutes=sc.t_block_start.minute)
     t = drange(t_day_start, sc.t_end, timedelta(minutes=res))
@@ -59,19 +64,27 @@ def plot_aggregated(sc, bd, unctrl, ctrl, ctrl_sched, res=1):
     ft = np.array([t[0]] + list(np.repeat(t[1:-1], 2)) + [t[-1]])
     P_el_ctrl_fill = np.repeat(P_el_ctrl[:-1], 2)
 
-    if hasattr(sc, 'slp_file'):
-        fig, ax = plt.subplots(3, sharex=True)
+    if SLP:
+        fig = plt.figure(figsize=(6.39, 4.25))
+        ax0 = fig.add_subplot(311)
+        ax1 = fig.add_subplot(312, sharex=ax0)
+        ax2 = fig.add_subplot(313, sharex=ax0)
+        ax = [ax0, ax1, ax2]
+        # bottom=0.1 doesn't work here... :(
+        fig.subplots_adjust(left=0.11, right=0.95, hspace=0.2, top=0.93)
     else:
         fig, ax = plt.subplots(2, sharex=True)
+        fig.subplots_adjust(left=0.11, right=0.95, hspace=0.3, top=0.98, bottom=0.2)
     ax[0].set_ylabel('P$_{\mathrm{el}}$ [kW]')
-    ymax = max(P_el_unctrl.max(), P_el_ctrl_fill.max(), 0) / 1000.0
-    ymin = min(P_el_unctrl.min(), P_el_ctrl_fill.min(), 0) / 1000.0
+    ymax = max(P_el_unctrl.max(), P_el_ctrl_fill.max(), P_el_sched.max(), 0) / 1000.0
+    ymin = min(P_el_unctrl.min(), P_el_ctrl_fill.min(), P_el_sched.min(), 0) / 1000.0
     ax[0].set_ylim(ymin - abs(ymin * 0.1), ymax + abs(ymax * 0.1))
     xspace = (t[-1] - t[-2])
     ax[0].set_xlim(t[0], t[-1] + xspace)
     # ax[0].axvline(t[i_block_start], ls='--', color='0.5')
     # ax[0].axvline(t[i_block_end], ls='--', color='0.5')
-    ax[0].axvspan(t[i_block_start], t[i_block_end], fc=GRAY+(0.1,), ec=EC)
+    if not SLP:
+        ax[0].axvspan(t[i_block_start], t[i_block_end], fc=GRAY+(0.1,), ec=EC)
     ax[0].axvline(t[0], ls='-', color=GRAY, lw=0.5)
     ax[0].axvline(t[len(t)/2], ls='-', color=GRAY, lw=0.5)
     l_unctrl, = ax[0].plot_date(t, P_el_unctrl / 1000.0, fmt=':', color=PRIMB, drawstyle='steps-post', lw=0.75)
@@ -80,7 +93,7 @@ def plot_aggregated(sc, bd, unctrl, ctrl, ctrl_sched, res=1):
     l_ctrl = ax[0].fill_between(ft, P_el_ctrl_fill / 1000.0, facecolors=PRIM+(0.5,), edgecolors=EC, lw=0.0)
     # Create proxy artist as l_ctrl legend handle
     l_ctrl_proxy = Rectangle((0, 0), 1, 1, fc=PRIM, ec=WHITE, lw=0.0, alpha=0.5)
-    l_sched, = ax[0].plot_date(t, P_el_sched / 1000.0, fmt='-', color=PRIMB, drawstyle='steps-post', lw=0.75)
+    l_sched, = ax[0].plot_date(t, P_el_sched / 1000.0, fmt='-', color=PRIM, drawstyle='steps-post', lw=0.75)
 
     # colors = [
     #                 '#348ABD', # blue
@@ -107,40 +120,46 @@ def plot_aggregated(sc, bd, unctrl, ctrl, ctrl_sched, res=1):
     ymin = T_storage_ctrl.min() - 273
     ax[1].set_ylim(ymin - abs(ymin * 0.01), ymax + abs(ymax * 0.01))
     ax[1].set_ylabel('T$_{\mathrm{storage}}\;[^{\circ}\mathrm{C}]$', labelpad=9)
-    ax[1].axvspan(t[i_block_start], t[i_block_end], fc=GRAY+(0.1,), ec=EC)
+    if not SLP:
+        ax[1].axvspan(t[i_block_start], t[i_block_end], fc=GRAY+(0.1,), ec=EC)
     ax[1].axvline(t[0], ls='-', color=GRAY, lw=0.5)
     ax[1].axvline(t[len(t)/2], ls='-', color=GRAY, lw=0.5)
     for v in T_storage_ctrl:
         ax[1].plot_date(t, v - 273.0, fmt='-', color=PRIMA, alpha=0.25, lw=0.5)
     l_T_med, = ax[1].plot_date(t, T_storage_ctrl.mean(0) - 273.0, fmt='-', color=PRIMA, alpha=0.75, lw=1.5)
 
-    if hasattr(sc, 'slp_file'):
+    if SLP:
         slp = _read_slp(sc, bd)
+        slp = resample(slp, 4)[skip:]
         diff_ctrl = (P_el_ctrl - P_el_unctrl) / 1000.0
+        diff_ctrl_fill = np.repeat((slp + diff_ctrl)[:-1], 2)
+        slp_fill = np.repeat(slp[:-1], 2)
         diff_sched = (P_el_sched - P_el_unctrl) / 1000.0
         ax[2].set_ylabel('P$_{el}$ [kW]')
         ymax = max(slp.max(), (slp + diff_ctrl).max(), (slp + diff_sched).max())
-        ymin = min(slp.min(), (slp + diff_ctrl).min(), (slp + diff_sched).min())
-        ax[2].set_ylim(ymin - (ymin * 0.1), ymax + (ymax * 0.1))
-        ax[2].plot_date(t, slp, fmt='-', lw=1, label='H0')
-        ax[2].plot_date(t, slp + diff_ctrl, fmt='-', lw=1, label='H0*')
-        ax[2].plot_date(t, slp + diff_sched, fmt='-', lw=1, label='H0* (sched only)')
-        leg3 = ax[2].legend(bbox_to_anchor=(0., 1.02, 1., .102), loc=3, ncol=4,
-                            borderaxespad=0.0, fancybox=False)
-        for label in leg3.get_texts():
-            label.set_fontsize('x-small')
+        # ymin = min(slp.min(), (slp + diff_ctrl).min(), (slp + diff_sched).min())
+        ax[2].set_ylim(0, ymax + (ymax * 0.1))
+        ax[2].axvline(t[len(t)/2], ls='-', color=GRAY, lw=0.5)
+        ax[2].plot_date(t, slp, fmt='-', color=PRIMB, drawstyle='steps-post', lw=0.75)
+        ax[2].fill_between(ft, diff_ctrl_fill, slp_fill, where=diff_ctrl_fill>=slp_fill, facecolors=PRIM+(0.5,), edgecolors=EC, lw=0.0)
+        ax[2].fill_between(ft, diff_ctrl_fill, slp_fill, where=diff_ctrl_fill<slp_fill, facecolors=PRIMB+(0.5,), edgecolors=EC, lw=0.0)
+        # ax[2].plot_date(t, slp + diff_sched, fmt='-', color=PRIMB, drawstyle='steps-post', lw=0.75)
 
     ax[0].xaxis.get_major_formatter().scaled[1/24.] = '%H:%M'
     ax[-1].set_xlabel('Tageszeit')
     fig.autofmt_xdate()
-    ax[1].legend([l_sched, l_unctrl, l_ctrl_proxy, l_T_med],
-                 ['Einsatzplan', 'ungesteuert', 'gesteuert', 'Speichertemperaturen (Median)'],
-                 bbox_to_anchor=(0., 1.03, 1., .103), loc=8, ncol=4,
-                 handletextpad=0.2, mode='expand', handlelength=3,
-                 borderaxespad=0.25, fancybox=False, fontsize='x-small')
-    # fig.subplots_adjust(left=0.1, right=0.95, top=0.98, bottom=0.2, hspace=0.3)
-    # For HPs:
-    fig.subplots_adjust(left=0.11, right=0.95, top=0.98, bottom=0.2, hspace=0.3)
+    if SLP:
+        ax[0].legend([l_sched, l_unctrl, l_ctrl_proxy, l_T_med],
+                     ['Einsatzplan', 'ungesteuert', 'gesteuert', 'Speichertemperaturen (Median)'],
+                     bbox_to_anchor=(0., 1.05, 1., .105), loc=8, ncol=4,
+                     handletextpad=0.2, mode='expand', handlelength=3,
+                     borderaxespad=0.25, fancybox=False, fontsize='x-small')
+    else:
+        ax[1].legend([l_sched, l_unctrl, l_ctrl_proxy, l_T_med],
+                     ['Einsatzplan', 'ungesteuert', 'gesteuert', 'Speichertemperaturen (Median)'],
+                     bbox_to_anchor=(0., 1.03, 1., .103), loc=8, ncol=4,
+                     handletextpad=0.2, mode='expand', handlelength=3,
+                     borderaxespad=0.25, fancybox=False, fontsize='x-small')
 
     # import pdb
     # pdb.set_trace()
@@ -234,9 +253,8 @@ def resample(d, resolution):
     return d.reshape(shape).sum(-1)/resolution
 
 
-if __name__ == '__main__':
+def run(sc_file):
     print()
-    sc_file = sys.argv[1]
     bd = os.path.dirname(sc_file)
     sc = scenario_factory.Scenario()
     sc.load_JSON(sc_file)
@@ -294,3 +312,11 @@ if __name__ == '__main__':
     #     plot_slp(sc, bd)
 
     plt.show()
+
+
+if __name__ == '__main__':
+    for n in sys.argv[1:]:
+        if os.path.isdir(n):
+            run(p(n, '0.json'))
+        else:
+            run(n)

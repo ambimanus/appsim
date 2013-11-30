@@ -11,6 +11,15 @@ from matplotlib.patches import Rectangle
 import scenario_factory
 
 
+# http://www.javascripter.net/faq/hextorgb.htm
+PRIMA = (148/256, 164/256, 182/256)
+PRIMB = (101/256, 129/256, 164/256)
+PRIM = (31/256, 74/256, 125/256)
+EC = (1, 1, 1, 0)
+GRAY = (0.5, 0.5, 0.5)
+WHITE = (1, 1, 1)
+
+
 def plot_each_device(sc, unctrl, cntrl):
     t = drange(sc.t_start, sc.t_end, timedelta(minutes=1))
     for d_unctrl, d_ctrl in zip(unctrl, ctrl):
@@ -62,15 +71,17 @@ def plot_aggregated(sc, bd, unctrl, ctrl, ctrl_sched, res=1):
     ax[0].set_xlim(t[0], t[-1] + xspace)
     # ax[0].axvline(t[i_block_start], ls='--', color='0.5')
     # ax[0].axvline(t[i_block_end], ls='--', color='0.5')
-    ax[0].axvspan(t[i_block_start], t[i_block_end], fc='0.5', lw=0.0, alpha=0.1)
-    ax[0].axvline(t[0], ls='-', color='0.5', lw=0.5)
-    ax[0].axvline(t[len(t)/2], ls='-', color='0.5', lw=0.5)
-    l_unctrl, = ax[0].plot_date(t, P_el_unctrl / 1000.0, fmt=':', color='#6581A4', drawstyle='steps-post', lw=0.75)
+    ax[0].axvspan(t[i_block_start], t[i_block_end], fc=GRAY+(0.1,), ec=EC)
+    ax[0].axvline(t[0], ls='-', color=GRAY, lw=0.5)
+    ax[0].axvline(t[len(t)/2], ls='-', color=GRAY, lw=0.5)
+    l_unctrl, = ax[0].plot_date(t, P_el_unctrl / 1000.0, fmt=':', color=PRIMB, drawstyle='steps-post', lw=0.75)
     l_unctrl.set_dashes([1.0, 1.0])
-    ax[0].fill_between(ft, P_el_ctrl_fill / 1000.0, color='#1F4A7D', lw=0.0, alpha=0.5)
-    # Create proxy artist for the legend handle
-    l_ctrl = Rectangle((0, 0), 1, 1, fc='#1F4A7D', lw=0.0, alpha=0.5)
-    l_sched, = ax[0].plot_date(t, P_el_sched / 1000.0, fmt='-', color='#6581A4', drawstyle='steps-post', lw=0.75)
+    # add lw=0.0 due to bug in mpl (will show as hairline in pdf though...)
+    l_ctrl = ax[0].fill_between(ft, P_el_ctrl_fill / 1000.0, facecolors=PRIM+(0.5,), edgecolors=EC, lw=0.0)
+    # Create proxy artist as l_ctrl legend handle
+    l_ctrl_proxy = Rectangle((0, 0), 1, 1, fc=PRIM, ec=WHITE, lw=0.0, alpha=0.5)
+    l_sched, = ax[0].plot_date(t, P_el_sched / 1000.0, fmt='-', color=PRIMB, drawstyle='steps-post', lw=0.75)
+
     # colors = [
     #                 '#348ABD', # blue
     #                 '#7A68A6', # purple
@@ -96,12 +107,12 @@ def plot_aggregated(sc, bd, unctrl, ctrl, ctrl_sched, res=1):
     ymin = T_storage_ctrl.min() - 273
     ax[1].set_ylim(ymin - abs(ymin * 0.01), ymax + abs(ymax * 0.01))
     ax[1].set_ylabel('T$_{\mathrm{storage}}\;[^{\circ}\mathrm{C}]$', labelpad=9)
-    ax[1].axvspan(t[i_block_start], t[i_block_end], fc='0.5', lw=0.0, alpha=0.1)
-    ax[1].axvline(t[0], ls='-', color='0.5', lw=0.5)
-    ax[1].axvline(t[len(t)/2], ls='-', color='0.5', lw=0.5)
+    ax[1].axvspan(t[i_block_start], t[i_block_end], fc=GRAY+(0.1,), ec=EC)
+    ax[1].axvline(t[0], ls='-', color=GRAY, lw=0.5)
+    ax[1].axvline(t[len(t)/2], ls='-', color=GRAY, lw=0.5)
     for v in T_storage_ctrl:
-        ax[1].plot_date(t, v - 273.0, fmt='-', color='#94A4B6', alpha=0.25, lw=0.5)
-    l_T_med, = ax[1].plot_date(t, T_storage_ctrl.mean(0) - 273.0, fmt='-', color='#94A4B6', alpha=0.75, lw=1.5)
+        ax[1].plot_date(t, v - 273.0, fmt='-', color=PRIMA, alpha=0.25, lw=0.5)
+    l_T_med, = ax[1].plot_date(t, T_storage_ctrl.mean(0) - 273.0, fmt='-', color=PRIMA, alpha=0.75, lw=1.5)
 
     if hasattr(sc, 'slp_file'):
         slp = _read_slp(sc, bd)
@@ -122,7 +133,7 @@ def plot_aggregated(sc, bd, unctrl, ctrl, ctrl_sched, res=1):
     ax[0].xaxis.get_major_formatter().scaled[1/24.] = '%H:%M'
     ax[-1].set_xlabel('Tageszeit')
     fig.autofmt_xdate()
-    ax[1].legend([l_sched, l_unctrl, l_ctrl, l_T_med],
+    ax[1].legend([l_sched, l_unctrl, l_ctrl_proxy, l_T_med],
                  ['Einsatzplan', 'ungesteuert', 'gesteuert', 'Speichertemperaturen (Median)'],
                  bbox_to_anchor=(0., 1.03, 1., .103), loc=8, ncol=4,
                  handletextpad=0.2, mode='expand', handlelength=3,

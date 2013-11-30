@@ -235,10 +235,12 @@ def resample(d, resolution):
 
 
 if __name__ == '__main__':
+    print()
     sc_file = sys.argv[1]
     bd = os.path.dirname(sc_file)
     sc = scenario_factory.Scenario()
     sc.load_JSON(sc_file)
+    print(sc.title)
 
     # plot_samples(sc, bd)
     # plt.show()
@@ -250,7 +252,6 @@ if __name__ == '__main__':
     sched = np.load(p(bd, sc.sched_file))
 
     ctrl = np.zeros(unctrl.shape)
-    print()
     idx = 0
     for l in (pre, block, post):
         ctrl[:,:,idx:idx + l.shape[-1]] = l
@@ -270,10 +271,10 @@ if __name__ == '__main__':
     assert unctrl.shape[-1] == ctrl.shape[-1] == ctrl_sched.shape[-1]
     shape = unctrl.shape[-1]
     if minutes == shape:
-        print('data is 1-minute resolution, so resample by 60')
+        print('data is 1-minute resolution, will be resampled by 60')
         res = 60
     elif minutes == shape * 15:
-        print('data is 15-minute resolution, so resample by 4')
+        print('data is 15-minute resolution, will be resampled by 4')
         res = 4
     elif minutes == shape * 60:
         print('data is 60-minute resolution, all fine')

@@ -150,13 +150,13 @@ def plot_aggregated(sc, bd, unctrl, ctrl, ctrl_sched, res=1):
     fig.autofmt_xdate()
     if SLP:
         ax[0].legend([l_sched, l_unctrl, l_ctrl_proxy, l_T_med],
-                     ['Einsatzplan', 'ungesteuert', 'gesteuert', 'Speichertemperaturen (Median)'],
+                     ['Verbundfahrplan', 'ungesteuert', 'gesteuert', 'Speichertemperaturen (Median)'],
                      bbox_to_anchor=(0., 1.05, 1., .105), loc=8, ncol=4,
                      handletextpad=0.2, mode='expand', handlelength=3,
                      borderaxespad=0.25, fancybox=False, fontsize='x-small')
     else:
         ax[1].legend([l_sched, l_unctrl, l_ctrl_proxy, l_T_med],
-                     ['Einsatzplan', 'ungesteuert', 'gesteuert', 'Speichertemperaturen (Median)'],
+                     ['Verbundfahrplan', 'ungesteuert', 'gesteuert', 'Speichertemperaturen (Median)'],
                      bbox_to_anchor=(0., 1.03, 1., .103), loc=8, ncol=4,
                      handletextpad=0.2, mode='expand', handlelength=3,
                      borderaxespad=0.25, fancybox=False, fontsize='x-small')

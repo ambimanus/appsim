@@ -10,7 +10,9 @@ import scenario_factory
 # http://www.javascripter.net/faq/hextorgb.htm
 PRIMA = (148/256, 164/256, 182/256)
 PRIMB = (101/256, 129/256, 164/256)
-PRIM = (31/256, 74/256, 125/256)
+PRIM  = ( 31/256,  74/256, 125/256)
+PRIMC = ( 41/256,  65/256,  94/256)
+PRIMD = ( 10/256,  42/256,  81/256)
 EC = (1, 1, 1, 0)
 GRAY = (0.5, 0.5, 0.5)
 WHITE = (1, 1, 1)
@@ -18,6 +20,11 @@ WHITE = (1, 1, 1)
 
 def obj(target, x):
     return np.sum(np.abs(target - x))
+
+
+def _f(target, x):
+    t_sum = target.sum()
+    return (t_sum - obj(target, x)) * 100.0 / t_sum
 
 
 def p(basedir, fn):
@@ -115,15 +122,12 @@ def stats(fn):
         target = np.ma.array(target, mask=mask)
         data = np.ma.array(data, mask=mask)
         diff = obj(target, data)
-        # perc =  -100 + (data.sum() * 100.0 / target.sum())
-        # Erfüllungsgrad (erreichte Prozent von target):
-        perf = (data.sum() * 100.0 / target.sum())
-        # Absoluter Erfüllungsgrad (erreichte Prozent von target in [0, 100]):
+        perf = _f(target, data)
         perf_abs = perf
         if perf_abs > 100.0:
-            perf_abs =  100 - min(100, max(0, perf_abs - 100))
-        st.append(perf_abs)
+            perf_abs = 100 - min(100, max(0, perf_abs - 100))
         print('obj(%s, %s) = %.2f kW (%.2f %%)' % (tname, dname, diff, perf_abs))
+        st.append(perf_abs)
 
 
     # Synchronism
@@ -154,7 +158,7 @@ def autolabel(ax, rects):
         height = rect.get_height()
         pos = rect.get_x()+rect.get_width()/2.
         ax.text(pos, 0.9 * height, '%.1f \\%%' % height, ha='center', va='bottom',
-                color=PRIM, fontsize=5)
+                color=PRIMD, fontsize=5)
 
 
 def autolabel_sync(ax, rects):
@@ -177,7 +181,7 @@ def plot_stats(names, target_sched, target_ctrl, target_unctrl, sched_ctrl, sche
     ax0 = fig.add_subplot(211)
     ax0.set_xlim(-0.5, x[-1] + 0.5)
     ax0.set_ylim(50, 100)
-    ax0.set_ylabel(r"""Einsatzplanguete [\%]""", fontsize='small')
+    ax0.set_ylabel(r"""Planguete [\%]""", fontsize='small')
     ax0.grid(False, which='major', axis='x')
     bars = ax0.bar(x, target_sched, align='center', width=0.5, facecolor=PRIM+(0.5,), edgecolor=EC)
     autolabel(ax0, bars)

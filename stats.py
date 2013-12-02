@@ -23,8 +23,7 @@ def obj(target, x):
 
 
 def _f(target, x):
-    t_sum = target.sum()
-    return (t_sum - obj(target, x)) * 100.0 / t_sum
+    return 100.0 - (obj(target, x) * 100.0 / target.sum())
 
 
 def p(basedir, fn):

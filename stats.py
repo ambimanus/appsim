@@ -23,7 +23,21 @@ def obj(target, x):
 
 
 def _f(target, x):
-    return 100.0 - (obj(target, x) * 100.0 / target.sum())
+    return obj(target, x) / np.sum(np.abs(target))
+
+
+# def _f(x):
+#     if x <= 0:
+#         return 1 - min(1, x)
+#     else:
+#         return 1 - min(1, -x)
+
+
+# def _f(x):
+#     if x <= 0:
+#         return max(0, 1 - x)
+#     else:
+#         return max(0, 1 + x)
 
 
 def p(basedir, fn):
@@ -121,10 +135,10 @@ def stats(fn):
         target = np.ma.array(target, mask=mask)
         data = np.ma.array(data, mask=mask)
         diff = obj(target, data)
-        perf = _f(target, data)
-        perf_abs = perf
-        if perf_abs > 100.0:
-            perf_abs = 100 - min(100, max(0, perf_abs - 100))
+        perf = max(0, 1 - _f(target, data))
+        perf_abs = perf * 100.0
+        # if perf_abs > 100.0:
+        #     perf_abs = 100 - min(100, max(0, perf_abs - 100))
         print('obj(%s, %s) = %.2f kW (%.2f %%)' % (tname, dname, diff, perf_abs))
         st.append(perf_abs)
 
@@ -138,7 +152,7 @@ def stats(fn):
         (47, 'sim_end'),
     ]
     for timestamp, name in pairs:
-        s = sync(T_storage_ctrl[:,timestamp] - 273)
+        s = sync(T_storage_ctrl[:,timestamp] - 273) * 100.0
         syncs.append(s)
         print('sync(%s) = %.2f' % (name, s))
 
@@ -165,7 +179,7 @@ def autolabel_sync(ax, rects):
     for rect in rects:
         height = rect.get_height()
         pos = rect.get_x()+rect.get_width()/2.
-        ax.text(pos, 1.05 * height, '%.2f \\%%' % height, ha='center', va='bottom',
+        ax.text(pos, 1.05 * height, '%.1f \\%%' % height, ha='center', va='bottom',
                 color=PRIM, fontsize=6)
 
 
@@ -214,14 +228,14 @@ def plot_syncs(names,
     for i in range(len(names)):
         ax = fig.add_subplot(len(names), 1, i + 1)
         ax.set_xlim(-0.5, x[-1] + 0.5)
-        ax.set_ylim(0, 0.3)
-        ax.set_ylabel('$f_a$', fontsize='small')
+        ax.set_ylim(0, 50)
+        ax.set_ylabel('$\mathit{sync}(t)$', fontsize='small')
         plt.text(0.5, 1.08, names[i], fontsize='x-small', color='#555555',
                  ha='center', transform=ax.transAxes)
         ax.grid(False, which='major', axis='x')
         bars = ax.bar(x, data[i], align='center', width=0.5, facecolor=PRIM+(0.5,), edgecolor=EC)
         autolabel_sync(ax, bars)
-        ax.yaxis.set_major_locator(MaxNLocator(nbins=3))
+        # ax.yaxis.set_major_locator(MaxNLocator(nbins=3))
         plt.setp(ax.get_yticklabels(), fontsize='small')
         if i < len(names) - 1:
             plt.setp(ax.get_xticklabels(), visible=False)

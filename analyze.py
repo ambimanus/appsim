@@ -204,20 +204,22 @@ def plot_aggregated_SLP(sc, bd, unctrl, ctrl, ctrl_sched, res=1):
     l_T_med, = ax[1].plot_date(t, T_storage_ctrl.mean(0) - 273.0, fmt='-', color=PRIMA, alpha=0.75, lw=1.5)
 
     ax[2].set_ylabel('P$_{el}$ [kW]')
+    ax[2].set_xlabel('Tageszeit')
     ymax = max(slp.max(), (slp + diff_ctrl).max())
     ax[2].set_ylim(0, ymax + (ymax * 0.1))
-    ax[2].plot_date(t, slp, fmt='-', color=PRIMB, drawstyle='steps-post', lw=0.75)
+    ax[2].plot_date(t, slp, fmt='-', color=PRIMB, drawstyle='steps-post', lw=0.75, label='Tageslastprofil')
     ax[2].fill_between(ft, diff_ctrl_fill, slp_fill, where=diff_ctrl_fill>=slp_fill, facecolors=PRIM+(0.5,), edgecolors=EC, lw=0.0)
     ax[2].fill_between(ft, diff_ctrl_fill, slp_fill, where=diff_ctrl_fill<slp_fill, facecolors=PRIMB+(0.5,), edgecolors=EC, lw=0.0)
 
-    ax[0].xaxis.get_major_formatter().scaled[1/24.] = '%H:%M'
-    ax[-1].set_xlabel('Tageszeit')
-    fig.autofmt_xdate()
     ax[0].legend([l_sched, l_unctrl, l_ctrl_proxy, l_T_med],
                  ['Verbundfahrplan', 'ungesteuert', 'gesteuert', 'Speichertemperaturen (Median)'],
                  bbox_to_anchor=(0., 1.05, 1., .105), loc=8, ncol=4,
                  handletextpad=0.2, mode='expand', handlelength=3,
                  borderaxespad=0.25, fancybox=False, fontsize='x-small')
+    ax[2].legend(loc=4, fancybox=False, fontsize='x-small')
+
+    fig.autofmt_xdate()
+    ax[0].xaxis.get_major_formatter().scaled[1/24.] = '%H:%M'
 
     # import pdb
     # pdb.set_trace()

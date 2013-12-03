@@ -143,7 +143,7 @@ def plot_aggregated_SLP(sc, bd, unctrl, ctrl, ctrl_sched, res=1):
     P_el_sched = ctrl_sched[:,skip + i_block_start:skip + i_block_end].sum(0)
     T_storage_ctrl = ctrl[:,2,skip + i_block_start:skip + i_block_end]
 
-    slp = resample(_read_slp(sc, bd), 1)[skip + i_block_start:skip + i_block_end]
+    slp = _read_slp(sc, bd)[skip + i_block_start:skip + i_block_end]
     diff_ctrl = (P_el_ctrl - P_el_unctrl) / 1000.0
     diff_ctrl_fill = np.repeat((slp + diff_ctrl)[:-1], 2)
     slp_fill = np.repeat(slp[:-1], 2)

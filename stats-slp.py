@@ -5,6 +5,7 @@ from datetime import timedelta
 import numpy as np
 
 import scenario_factory
+from analyze import _read_slp, norm
 
 
 # http://www.javascripter.net/faq/hextorgb.htm
@@ -69,13 +70,10 @@ def stats(fn):
     assert unctrl.shape[-1] == ctrl.shape[-1] == ctrl_sched.shape[-1]
     shape = unctrl.shape[-1]
     if minutes == shape:
-        print('data is 1-minute resolution, will be resampled by 60')
-        res = 60
+        print('data is 1-minute resolution, will be resampled by 15')
+        res = 15
     elif minutes == shape * 15:
-        print('data is 15-minute resolution, will be resampled by 4')
-        res = 4
-    elif minutes == shape * 60:
-        print('data is 60-minute resolution, all fine')
+        print('data is 15-minute resolution, all fine')
         res = 1
     else:
         raise RuntimeError('unsupported data resolution: %.2f' % (minutes / shape))
@@ -89,37 +87,25 @@ def stats(fn):
 
     t_day_start = sc.t_block_start - timedelta(hours=sc.t_block_start.hour,
                                          minutes=sc.t_block_start.minute)
-    skip = (t_day_start - sc.t_start).total_seconds() / 60 / 60
-    i_block_start = (sc.t_block_start - t_day_start).total_seconds() / 60 / 60
-    i_block_end = (sc.t_block_end - t_day_start).total_seconds() / 60 / 60
+    skip = (t_day_start - sc.t_start).total_seconds() / 60 / 15
+    i_block_start = (sc.t_block_start - t_day_start).total_seconds() / 60 / 15
+    i_block_end = (sc.t_block_end - t_day_start).total_seconds() / 60 / 15
 
-    P_el_unctrl = unctrl[:,0,skip:].sum(0)
-    P_el_ctrl = ctrl[:,0,skip:].sum(0)
-    P_el_sched = ctrl_sched[:,skip:].sum(0)
+    P_el_unctrl = unctrl[:,0,skip + i_block_start:skip + i_block_end].sum(0)
+    P_el_ctrl = ctrl[:,0,skip + i_block_start:skip + i_block_end].sum(0)
+    P_el_sched = ctrl_sched[:,skip + i_block_start:skip + i_block_end].sum(0)
 
-    T_storage_ctrl = ctrl[:,2,skip:]
+    slp = _read_slp(sc, bd)[skip + i_block_start:skip + i_block_end]
 
     # Stats
-    target = np.ma.zeros((minutes / 60 - skip,))
-    target[:i_block_start] = np.ma.masked
-    target[i_block_start:i_block_end] = np.array(sc.block)
-    target[i_block_end:] = np.ma.masked
-    # print('target = %s' % target)
     pairs = [
-        (target, P_el_sched, 'target', 'P_el_sched'),
-        (target, P_el_ctrl, 'target', 'P_el_ctrl'),
-        (target, P_el_unctrl, 'target', 'P_el_unctrl'),
-
         (P_el_sched, P_el_ctrl, 'P_el_sched', 'P_el_ctrl'),
         (P_el_sched, P_el_unctrl, 'P_el_sched', 'P_el_unctrl'),
 
         (P_el_unctrl, P_el_ctrl, 'P_el_unctrl', 'P_el_ctrl'),
     ]
-    mask = target.mask
     st = [sc.title]
     for target, data, tname, dname in pairs:
-        target = np.ma.array(target, mask=mask)
-        data = np.ma.array(data, mask=mask)
         diff = obj(target, data)
         perf = max(0, 1 - _f(target, data))
         perf_abs = perf * 100.0
@@ -128,27 +114,20 @@ def stats(fn):
         print('obj(%s, %s) = %.2f kW (%.2f %%)' % (tname, dname, diff, perf_abs))
         st.append(perf_abs)
 
+    # SLP
+    diff_ctrl = (P_el_ctrl - P_el_unctrl) / 1000.0
+    slp_ctrl = slp + diff_ctrl
+    slp_range = abs(slp.max() - slp.min())
+    slp_range_ctrl = abs(slp_ctrl.max() - slp_ctrl.min())
+    reduction = (1 - norm(0, slp_range, slp_range_ctrl)) * 100
+    print('slp range = %.2f kW' % slp_range)
+    print('slp range (ctrl) = %.2f kW' % slp_range_ctrl)
+    print('reduction = %.2f %%' % reduction)
+    st.append(reduction)
 
-    # Synchronism
-    syncs = []
-    pairs = [
-        (i_block_start, 'block_start'),
-        (i_block_end, 'block_end'),
-        (23, 'day_end'),
-        (47, 'sim_end'),
-    ]
-    for timestamp, name in pairs:
-        s = sync(T_storage_ctrl[:,timestamp] - 273) * 100.0
-        syncs.append(s)
-        print('sync(%s) = %.2f' % (name, s))
 
     print()
-    return st, syncs
-
-
-def sync(data):
-    hist, edges = np.histogram(data, len(data))
-    return (max(hist) - 1) / (len(data) - 1)
+    return st
 
 
 def autolabel(ax, rects):
@@ -158,15 +137,6 @@ def autolabel(ax, rects):
         pos = rect.get_x()+rect.get_width()/2.
         ax.text(pos, 0.9 * height, '%.1f \\%%' % height, ha='center', va='bottom',
                 color=PRIMD, fontsize=5)
-
-
-def autolabel_sync(ax, rects):
-    # attach some text labels
-    for rect in rects:
-        height = rect.get_height()
-        pos = rect.get_x()+rect.get_width()/2.
-        ax.text(pos, 1.05 * height, '%.1f \\%%' % height, ha='center', va='bottom',
-                color=PRIM, fontsize=6)
 
 
 def plot_stats(names, target_sched, target_ctrl, target_unctrl, sched_ctrl, sched_unctrl, unctrl_ctrl):
@@ -200,68 +170,19 @@ def plot_stats(names, target_sched, target_ctrl, target_unctrl, sched_ctrl, sche
     return fig
 
 
-def plot_syncs(names,
-               sync_block_start, sync_block_end, sync_day_end, sync_sim_end):
-    import matplotlib.pyplot as plt
-    from matplotlib.ticker import FixedLocator, MaxNLocator
-
-    fig = plt.figure(figsize=(6.39, 8))
-    fig.subplots_adjust(bottom=0.1, hspace=0.6)
-    data = np.array(
-        [sync_block_start, sync_block_end, sync_day_end, sync_sim_end]).T
-    x = np.arange(data.shape[-1])
-
-    for i in range(len(names)):
-        ax = fig.add_subplot(len(names), 1, i + 1)
-        ax.set_xlim(-0.5, x[-1] + 0.5)
-        ax.set_ylim(0, 50)
-        ax.set_ylabel('$\mathit{sync}(t)$', fontsize='small')
-        plt.text(0.5, 1.08, names[i], fontsize='x-small', color='#555555',
-                 ha='center', transform=ax.transAxes)
-        ax.grid(False, which='major', axis='x')
-        bars = ax.bar(x, data[i], align='center', width=0.5, facecolor=PRIM+(0.5,), edgecolor=EC)
-        autolabel_sync(ax, bars)
-        # ax.yaxis.set_major_locator(MaxNLocator(nbins=3))
-        plt.setp(ax.get_yticklabels(), fontsize='small')
-        if i < len(names) - 1:
-            plt.setp(ax.get_xticklabels(), visible=False)
-        else:
-            xticks = [
-                '$t^{\mathrm{block}}_{\mathrm{start}}$',
-                '$t^{\mathrm{block}}_{\mathrm{end}}$',
-                '$t^{\mathrm{trade}}_{\mathrm{end}}$',
-                '$t^{\mathrm{sim}}_{\mathrm{end}}$',
-            ]
-            ax.xaxis.set_major_locator(FixedLocator(x))
-            ax.set_xticklabels(xticks, fontsize='small')
-
-    plt.show()
-    return fig
-
-
 if __name__ == '__main__':
     names = []
-    target_sched, target_ctrl, target_unctrl = [], [], []
     sched_ctrl, sched_unctrl = [], []
     unctrl_ctrl = []
-    sync_block_start, sync_block_end = [], []
-    sync_day_end, sync_sim_end = [], []
+    reduction = []
     for dn in sys.argv[1:]:
         if os.path.isdir(dn):
-            st, syncs = stats(p(dn, '0.json'))
-            for l, d in zip((names, target_sched, target_ctrl, target_unctrl,
-                             sched_ctrl, sched_unctrl, unctrl_ctrl),
+            st = stats(p(dn, '0.json'))
+            for l, d in zip((names, sched_ctrl, sched_unctrl, unctrl_ctrl,
+                             reduction),
                             st):
                 l.append(d)
-            for l, d in zip((sync_block_start, sync_block_end,
-                             sync_day_end, sync_sim_end),
-                            syncs):
-                l.append(d)
 
-    fig = plot_stats(names, target_sched, target_ctrl, target_unctrl,
-                     sched_ctrl, sched_unctrl, unctrl_ctrl)
-    fig.savefig(p(os.path.split(dn)[0], 'stats.pdf'))
-
-    fig = plot_syncs(names, sync_block_start, sync_block_end, sync_day_end,
-                     sync_sim_end)
-    fig.savefig(p(os.path.split(dn)[0], 'sync.pdf'))
+    # fig = plot_stats(names, target_sched, target_ctrl, target_unctrl,
+    #                  sched_ctrl, sched_unctrl, unctrl_ctrl)
+    # fig.savefig(p(os.path.split(dn)[0], 'stats.pdf'))

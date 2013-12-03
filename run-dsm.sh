@@ -62,7 +62,7 @@ SC_SPREAD='{
 }'
 
 SC_SPREAD_SLP='{
-  "title": "Spreadreduce-SLP-50-HP",
+  "title": "Spreadreduce-SLP-111-HP",
   "seed": 0,
   "sample_size": 200,
   "t_pre": [2010, 3, 25],
@@ -76,10 +76,10 @@ SC_SPREAD_SLP='{
     ["Vaillant EcoPower 3.0", 0],
     ["Vaillant EcoPower 4.7", 0],
     ["Vaillant EcoPower 20.0", 0],
-    ["Stiebel Eltron WPF 5", 10],
-    ["Stiebel Eltron WPF 7", 15],
-    ["Stiebel Eltron WPF 10", 15],
-    ["Stiebel Eltron WPF 13", 10],
+    ["Stiebel Eltron WPF 5", 111],
+    ["Stiebel Eltron WPF 7", 0],
+    ["Stiebel Eltron WPF 10", 0],
+    ["Stiebel Eltron WPF 13", 0],
     ["Weishaupt WWP S 24", 0],
     ["Weishaupt WWP S 30", 0],
     ["Weishaupt WWP S 37", 0],

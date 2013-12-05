@@ -4,8 +4,6 @@ from tempfile import NamedTemporaryFile
 
 import numpy as np
 
-from appliancesim.ext.device import SuccessiveSampler, HiResSampler
-
 from progress import PBar
 
 
@@ -53,7 +51,7 @@ def simulate(device, start, end, progress, newline=False):
     return resample(data, 15)
 
 
-def create_sample(d, sample_size, t_start, t_end, progress, density=None):
+def create_sample(d, sample_size, t_start, t_end, progress, density=None, noise=False):
     if density is None:
         if d.typename == 'heatpump':
             density = 0.25
@@ -62,26 +60,39 @@ def create_sample(d, sample_size, t_start, t_end, progress, density=None):
         else:
             raise RuntimeError('unknown type: %s' % d.typename)
     device = d.copy()
-    device.components.sampler.setpoint_density = density
     d = (t_end - t_start)
     if d == 0:
         return np.zeros((sample_size, 0)), np.zeros((sample_size, 0))
-    sampler = device.components.sampler
-    if type(sampler) == SuccessiveSampler:
+    if hasattr(device.components, 'sampler'):
+        sampler = device.components.sampler
+        sampler.setpoint_density = density
         modes = None
-        sample = np.array(sampler.sample(sample_size, duration=d / 15))
-    elif type(sampler) == HiResSampler:
+        sample = np.array(sampler.sample(sample_size, duration=int(d / 15)))
+    if hasattr(device.components, 'hires_sampler'):
+        sampler = device.components.hires_sampler
+        sampler.setpoint_density = density
         modes, sample = np.array(sampler.sample(sample_size, duration=d)
                                 ).swapaxes(0, 1)
         sample = resample(sample, 15)
+    elif hasattr(device.components, 'minmax_sampler'):
+        sampler = device.components.minmax_sampler
+        # sampler.setpoint_density = density    # not used in this sampler
+        modes = None
+        sample = np.array(sampler.sample(sample_size, duration=int(d / 15)))
+    elif hasattr(device.components, 'modulating_sampler'):
+        sampler = device.components.modulating_sampler
+        # sampler.setpoint_density = density    # not used in this sampler
+        modes = None
+        sample = np.array(sampler.sample(sample_size, duration=int(d / 15)))
     else:
         raise RuntimeError('unknown sampler %s' %type(sampler))
-    # Add noise to prevent breaking the SVDD model due to linear dependencies
-    np.random.seed(device.random.rand_int())
-    scale = 0.000001 * np.max(np.abs(sample))
-    noise = np.random.normal(scale=scale, size=sample.shape)
 
-    sample = sample + noise
+    if noise:
+        # Add noise to prevent breaking the SVDD model due to linear dependencies
+        np.random.seed(device.random.rand_int())
+        scale = 0.000001 * np.max(np.abs(sample))
+        noise = np.random.normal(scale=scale, size=sample.shape)
+        sample = sample + noise
 
     if device.typename == 'heatpump':
         # This is a consumer, so negate the sample
@@ -132,7 +143,7 @@ def run_pre(sc):
         sc.state_files.append(tmpf.name)
         # Sampling
         modes, sample = create_sample(d, sc.sample_size, sc.i_block_start,
-                                      sc.i_block_end, progress)
+                                      sc.i_block_end, progress, noise=sc.svsm)
         modes_data.append(modes)
         sample_data.append(sample)
     print()

@@ -141,6 +141,9 @@ def plot_aggregated_SLP(sc, bd, unctrl, ctrl, ctrl_sched, res=1):
     P_el_unctrl = unctrl[:,0,skip + i_block_start:skip + i_block_end].sum(0)
     P_el_ctrl = ctrl[:,0,skip + i_block_start:skip + i_block_end].sum(0)
     P_el_sched = ctrl_sched[:,skip + i_block_start:skip + i_block_end].sum(0)
+    # sched correction
+    P_el_sched = np.roll(P_el_sched, 1, axis=0)
+    P_el_sched[0] = P_el_ctrl[0]
     T_storage_ctrl = ctrl[:,2,skip + i_block_start:skip + i_block_end]
 
     slp = _read_slp(sc, bd)[skip + i_block_start:skip + i_block_end]
@@ -205,8 +208,8 @@ def plot_aggregated_SLP(sc, bd, unctrl, ctrl, ctrl_sched, res=1):
 
     ax[2].set_ylabel('P$_{el}$ [kW]')
     ax[2].set_xlabel('Tageszeit')
-    ymax = max(slp.max(), (slp + diff_ctrl).max())
-    ax[2].set_ylim(0, ymax + (ymax * 0.1))
+    ymin = max(slp.min(), (slp + diff_ctrl).min())
+    ax[2].set_ylim(ymin + (ymin * 0.1), 0)
     ax[2].plot_date(t, slp, fmt='-', color=PRIMB, drawstyle='steps-post', lw=0.75, label='Tageslastprofil')
     ax[2].fill_between(ft, diff_ctrl_fill, slp_fill, where=diff_ctrl_fill>=slp_fill, facecolors=PRIM+(0.5,), edgecolors=EC, lw=0.0)
     ax[2].fill_between(ft, diff_ctrl_fill, slp_fill, where=diff_ctrl_fill<slp_fill, facecolors=PRIMB+(0.5,), edgecolors=EC, lw=0.0)
@@ -264,7 +267,8 @@ def _read_slp(sc, bd):
                     continue
                 elif date >= sc.t_end:
                     break
-                slp.append(float(row[2].replace(',', '.')))
+                # This is a demand, so negate the values
+                slp.append(-1.0 * float(row[2].replace(',', '.')))
     slp = np.array(slp)
     # Scale values
     # if hasattr(sc, 'run_unctrl_datafile'):
@@ -273,9 +277,10 @@ def _read_slp(sc, bd):
     #    slp = slp_norm * (unctrl.max() - unctrl.min()) + unctrl.min()
     MS_day_mean = 13600   # kWh, derived from SmartNord Scenario document
     MS_15_mean = MS_day_mean / 96
-    slp = slp / slp.mean() * MS_15_mean
+    slp = slp / np.abs(slp.mean()) * MS_15_mean
 
     return slp
+    # return np.array(np.roll(slp, 224, axis=0))
 
 
 def plot_slp(sc, bd):

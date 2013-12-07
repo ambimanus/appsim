@@ -196,7 +196,6 @@ def plot_stats(names, target_sched, target_ctrl, target_unctrl, sched_ctrl, sche
     ax1.xaxis.set_major_locator(FixedLocator(x))
     ax1.set_xticklabels(names, fontsize='xx-small', rotation=45, rotation_mode='anchor', ha='right')
 
-    plt.show()
     return fig
 
 
@@ -235,7 +234,6 @@ def plot_syncs(names,
             ax.xaxis.set_major_locator(FixedLocator(x))
             ax.set_xticklabels(xticks, fontsize='small')
 
-    plt.show()
     return fig
 
 
@@ -261,7 +259,9 @@ if __name__ == '__main__':
     fig = plot_stats(names, target_sched, target_ctrl, target_unctrl,
                      sched_ctrl, sched_unctrl, unctrl_ctrl)
     fig.savefig(p(os.path.split(dn)[0], 'stats.pdf'))
+    # plt.show()
 
     fig = plot_syncs(names, sync_block_start, sync_block_end, sync_day_end,
                      sync_sim_end)
     fig.savefig(p(os.path.split(dn)[0], 'sync.pdf'))
+    # plt.show()

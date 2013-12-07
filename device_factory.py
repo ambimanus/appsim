@@ -108,11 +108,13 @@ def create_heater(seed, id, model, T_min, T_max, storage_weight, storage_loss,
         if model == 'Vaillant EcoPower 1.0':
             device = Device('chp', id, [Consumer(), HeatDemand(), Storage(),
                     chp.Engine(), Scheduler(), chp.BoostHeater(),
-                    MinMaxSampler()], seed=seed)
+                    SuccessiveSampler()], seed=seed)
+                    # MinMaxSampler()], seed=seed)
         else:
             device = Device('chp', id, [Consumer(), HeatDemand(), Storage(),
                     chp.Engine(), Scheduler(), chp.BoostHeater(),
-                    ModulatingSampler()], seed=seed)
+                    SuccessiveSampler()], seed=seed)
+#                    ModulatingSampler()], seed=seed)
         # Minimale Verweilzeit je gefahrenem Betriebsmodus
         device.components.engine.min_step_duration = 60
         # initiale Werte für Verlaufs-Schätzer
@@ -125,7 +127,8 @@ def create_heater(seed, id, model, T_min, T_max, storage_weight, storage_loss,
         #         chp.BoostHeater(), SuccessiveSampler()], seed=seed)
         device = Device('heatpump', id, [Consumer(), HeatDemand(),
                 hp.RandomHeatSource(), Storage(), hp.Engine(), Scheduler(),
-                chp.BoostHeater(), MinMaxSampler()], seed=seed)
+                chp.BoostHeater(), SuccessiveSampler()], seed=seed)
+               # chp.BoostHeater(), MinMaxSampler()], seed=seed)
     else:
         raise(TypeError('unknown model:', model))
 

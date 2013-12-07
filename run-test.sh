@@ -8,7 +8,7 @@ abort() {
 }
 
 SC_SPREAD_SLP='{
-  "title": "Test_ModulatingSampler",
+  "title": "Test_SuccessiveSampler",
   "seed": 0,
   "sample_size": 10,
   "t_pre": [2010, 3, 25],
@@ -19,11 +19,11 @@ SC_SPREAD_SLP='{
   "objective": "spreadreduce-slp",
   "device_templates": [
     ["Vaillant EcoPower 1.0", 0],
-    ["Vaillant EcoPower 3.0", 1],
+    ["Vaillant EcoPower 3.0", 0],
     ["Vaillant EcoPower 4.7", 0],
     ["Vaillant EcoPower 20.0", 0],
     ["Stiebel Eltron WPF 5", 0],
-    ["Stiebel Eltron WPF 7", 0],
+    ["Stiebel Eltron WPF 7", 1],
     ["Stiebel Eltron WPF 10", 0],
     ["Stiebel Eltron WPF 13", 0],
     ["Weishaupt WWP S 24", 0],

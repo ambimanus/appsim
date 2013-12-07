@@ -140,10 +140,9 @@ def plot_aggregated_SLP(sc, bd, unctrl, ctrl, ctrl_sched, res=1):
 
     P_el_unctrl = unctrl[:,0,skip + i_block_start:skip + i_block_end].sum(0)
     P_el_ctrl = ctrl[:,0,skip + i_block_start:skip + i_block_end].sum(0)
+    # ctrl correction
+    P_el_ctrl = np.roll(P_el_ctrl, -1, axis=0)
     P_el_sched = ctrl_sched[:,skip + i_block_start:skip + i_block_end].sum(0)
-    # sched correction
-    P_el_sched = np.roll(P_el_sched, 1, axis=0)
-    P_el_sched[0] = P_el_ctrl[0]
     T_storage_ctrl = ctrl[:,2,skip + i_block_start:skip + i_block_end]
 
     slp = _read_slp(sc, bd)[skip + i_block_start:skip + i_block_end]
@@ -219,7 +218,7 @@ def plot_aggregated_SLP(sc, bd, unctrl, ctrl, ctrl_sched, res=1):
                  bbox_to_anchor=(0., 1.05, 1., .105), loc=8, ncol=4,
                  handletextpad=0.2, mode='expand', handlelength=3,
                  borderaxespad=0.25, fancybox=False, fontsize='x-small')
-    ax[2].legend(loc=4, fancybox=False, fontsize='x-small')
+    ax[2].legend(loc=1, fancybox=False, fontsize='x-small')
 
     fig.autofmt_xdate()
     ax[0].xaxis.get_major_formatter().scaled[1/24.] = '%H:%M'
@@ -384,11 +383,6 @@ def run(sc_file):
         fig = plot_aggregated(sc, bd, unctrl, ctrl, ctrl_sched, res=60)
     fig.savefig(p(bd, sc.title) + '.pdf')
     fig.savefig(p(bd, sc.title) + '.png', dpi=300)
-
-    # sc.slp_file = '/home/chh/data/crystal-chp/slp/2010_slp_profile_eon_mitte_ag/H0 - Haushalt.csv'
-
-    # if hasattr(sc, 'slp_file'):
-    #     plot_slp(sc, bd)
 
     plt.show()
 

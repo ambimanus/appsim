@@ -54,9 +54,9 @@ def simulate(device, start, end, progress, newline=False):
 def create_sample(d, sample_size, t_start, t_end, progress, density=None, noise=False):
     if density is None:
         if d.typename == 'heatpump':
-            density = 0.25
+            density = 0.03
         elif d.typename == 'chp':
-            density = 0.75
+            density = 0.01
         else:
             raise RuntimeError('unknown type: %s' % d.typename)
     device = d.copy()
@@ -68,7 +68,7 @@ def create_sample(d, sample_size, t_start, t_end, progress, density=None, noise=
         sampler.setpoint_density = density
         modes = None
         sample = np.array(sampler.sample(sample_size, duration=int(d / 15)))
-    if hasattr(device.components, 'hires_sampler'):
+    elif hasattr(device.components, 'hires_sampler'):
         sampler = device.components.hires_sampler
         sampler.setpoint_density = density
         modes, sample = np.array(sampler.sample(sample_size, duration=d)

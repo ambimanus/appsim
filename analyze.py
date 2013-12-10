@@ -207,7 +207,7 @@ def plot_aggregated_SLP(sc, bd, unctrl, ctrl, ctrl_sched, res=1):
 
     ax[2].set_ylabel('P$_{el}$ [kW]')
     ax[2].set_xlabel('Tageszeit')
-    ymin = max(slp.min(), (slp + diff_ctrl).min())
+    ymin = min(slp.min(), (slp + diff_ctrl).min())
     ax[2].set_ylim(ymin + (ymin * 0.1), 0)
     ax[2].plot_date(t, slp, fmt='-', color=PRIMB, drawstyle='steps-post', lw=0.75, label='Tageslastprofil')
     ax[2].fill_between(ft, diff_ctrl_fill, slp_fill, where=diff_ctrl_fill>=slp_fill, facecolors=PRIM+(0.5,), edgecolors=EC, lw=0.0)
@@ -222,9 +222,6 @@ def plot_aggregated_SLP(sc, bd, unctrl, ctrl, ctrl_sched, res=1):
 
     fig.autofmt_xdate()
     ax[0].xaxis.get_major_formatter().scaled[1/24.] = '%H:%M'
-
-    # import pdb
-    # pdb.set_trace()
 
     return fig
 

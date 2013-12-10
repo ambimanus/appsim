@@ -8,7 +8,7 @@ abort() {
 }
 
 SC_PEAKLOAD='{
-  "title": "Peakload-100-HP-SVSM-newsampler",
+  "title": "Peakload-100-HP-SVSM",
   "seed": 0,
   "sample_size": 200,
   "t_pre": [2010, 3, 25],

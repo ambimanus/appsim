@@ -178,7 +178,6 @@ def plot_stats(names, target_sched, target_ctrl, target_unctrl, sched_ctrl, sche
     x = np.arange(len(names))
 
     ax0 = fig.add_subplot(211)
-    ax0.set_xlim(-0.5, x[-1] + 0.5)
     ax0.set_ylim(50, 100)
     ax0.set_ylabel(r"""Planguete [\%]""", fontsize='small')
     ax0.grid(False, which='major', axis='x')
@@ -195,6 +194,7 @@ def plot_stats(names, target_sched, target_ctrl, target_unctrl, sched_ctrl, sche
     plt.setp(ax0.get_xticklabels(), visible=False)
     ax1.xaxis.set_major_locator(FixedLocator(x))
     ax1.set_xticklabels(names, fontsize='xx-small', rotation=45, rotation_mode='anchor', ha='right')
+    ax0.set_xlim(-0.5, x[-1] + 0.5)
 
     return fig
 
@@ -212,7 +212,6 @@ def plot_syncs(names,
 
     for i in range(len(names)):
         ax = fig.add_subplot(len(names), 1, i + 1)
-        ax.set_xlim(-0.5, x[-1] + 0.5)
         ax.set_ylim(0, 50)
         ax.set_ylabel('$\mathit{sync}(t)$', fontsize='small')
         plt.text(0.5, 1.08, names[i], fontsize='x-small', color='#555555',
@@ -233,6 +232,7 @@ def plot_syncs(names,
             ]
             ax.xaxis.set_major_locator(FixedLocator(x))
             ax.set_xticklabels(xticks, fontsize='small')
+        ax.set_xlim(-0.5, x[-1] + 0.5)
 
     return fig
 
@@ -259,6 +259,7 @@ if __name__ == '__main__':
     fig = plot_stats(names, target_sched, target_ctrl, target_unctrl,
                      sched_ctrl, sched_unctrl, unctrl_ctrl)
     fig.savefig(p(os.path.split(dn)[0], 'stats.pdf'))
+    # import matplotlib.pyplot as plt
     # plt.show()
 
     fig = plot_syncs(names, sync_block_start, sync_block_end, sync_day_end,

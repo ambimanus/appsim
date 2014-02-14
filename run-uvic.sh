@@ -69,6 +69,6 @@ deactivate
 echo "Simulation done, see $(dirname $SC_FILE)"
 
 source /home/chh/.virtualenv/appsim/bin/activate
-python analyze.py "$SC_FILE"
+python analyze-headless.py "$SC_FILE"
 abort $?
 deactivate

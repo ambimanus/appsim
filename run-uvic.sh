@@ -35,7 +35,7 @@ SC_SPREAD_SLP='{
   "state_files_ctrl": [],
   "sched_file": null,
   "svsm": false,
-  "slp_file": "/home/chh/hg/appsim/slp/H0 - Haushalt.csv"
+  "slp_file": "/home/chh/data/crystal-chp/slp/2010_slp_profile_eon_mitte_ag/H0 - Haushalt.csv"
 }'
 
 REV=$(python revision.py)

@@ -381,7 +381,7 @@ def run(sc_file):
     fig.savefig(p(bd, sc.title) + '.pdf')
     fig.savefig(p(bd, sc.title) + '.png', dpi=300)
 
-    plt.show()
+    # plt.show()
 
 
 if __name__ == '__main__':

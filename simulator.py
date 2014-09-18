@@ -1,9 +1,10 @@
+import sys
 import os
-import xdrlib
-from tempfile import NamedTemporaryFile
+import datetime
 
 import numpy as np
 
+import scenario_factory
 from progress import PBar
 
 
@@ -48,7 +49,7 @@ def simulate(device, start, end, progress, newline=False):
     if newline:
         print()
 
-    return resample(data, 15)
+    return data
 
 
 def create_sample(d, sample_size, t_start, t_end, progress, density=None, noise=False):
@@ -61,29 +62,28 @@ def create_sample(d, sample_size, t_start, t_end, progress, density=None, noise=
             raise RuntimeError('unknown type: %s' % d.typename)
     device = d.copy()
     d = (t_end - t_start)
-    if d == 0:
+    if d == 0 or sample_size == 0:
         return np.zeros((sample_size, 0)), np.zeros((sample_size, 0))
     if hasattr(device.components, 'sampler'):
         sampler = device.components.sampler
         sampler.setpoint_density = density
-        modes = None
         sample = np.array(sampler.sample(sample_size, duration=int(d / 15)))
-    elif hasattr(device.components, 'hires_sampler'):
-        sampler = device.components.hires_sampler
-        sampler.setpoint_density = density
-        modes, sample = np.array(sampler.sample(sample_size, duration=d)
-                                ).swapaxes(0, 1)
-        sample = resample(sample, 15)
-    elif hasattr(device.components, 'minmax_sampler'):
-        sampler = device.components.minmax_sampler
-        # sampler.setpoint_density = density    # not used in this sampler
-        modes = None
-        sample = np.array(sampler.sample(sample_size, duration=int(d / 15)))
-    elif hasattr(device.components, 'modulating_sampler'):
-        sampler = device.components.modulating_sampler
-        # sampler.setpoint_density = density    # not used in this sampler
-        modes = None
-        sample = np.array(sampler.sample(sample_size, duration=int(d / 15)))
+    # elif hasattr(device.components, 'hires_sampler'):
+    #     sampler = device.components.hires_sampler
+    #     sampler.setpoint_density = density
+    #     modes, sample = np.array(sampler.sample(sample_size, duration=d)
+    #                             ).swapaxes(0, 1)
+    #     sample = resample(sample, 15)
+    # elif hasattr(device.components, 'minmax_sampler'):
+    #     sampler = device.components.minmax_sampler
+    #     # sampler.setpoint_density = density    # not used in this sampler
+    #     modes = None
+    #     sample = np.array(sampler.sample(sample_size, duration=int(d / 15)))
+    # elif hasattr(device.components, 'modulating_sampler'):
+    #     sampler = device.components.modulating_sampler
+    #     # sampler.setpoint_density = density    # not used in this sampler
+    #     modes = None
+    #     sample = np.array(sampler.sample(sample_size, duration=int(d / 15)))
     else:
         raise RuntimeError('unknown sampler %s' %type(sampler))
 
@@ -99,119 +99,52 @@ def create_sample(d, sample_size, t_start, t_end, progress, density=None, noise=
         sample = sample * (-1.0)
 
     progress.update(progress.currval + (sample_size * d))
-    return modes, sample
+    return sample
 
 
-def run_unctrl(sc):
-    print('--- Simulating uncontrolled behavior (full)')
-    p_sim = PBar(len(sc.devices) * (sc.i_end - sc.i_pre)).start()
+def run(sc):
+    progress = PBar(
+            # Pre-Simulation
+            (len(sc.devices) * (sc.i_start - sc.i_pre)) +
+            # Simulation
+            (len(sc.devices) * (sc.i_end - sc.i_start)) +
+            # Samples
+            (len(sc.devices) * sc.sample_size * (sc.i_end - sc.i_start))
+    ).start()
     sim_data = []
-    for d in sc.devices:
-        # Create a shadow copy of the device to operate on
-        d = d.copy()
-        # Pre-Simulation
-        simulate(d, sc.i_pre, sc.i_start, p_sim)
-        # Simulation
-        sim_data.append(simulate(d, sc.i_start, sc.i_end, p_sim))
-    print()
-    return np.array(sim_data)
-
-
-def run_pre(sc):
-    print('--- Simulating uncontrolled behavior in [pre, start - 1] and [start, block_start]')
-    progress = PBar((len(sc.devices) * (sc.i_block_start - sc.i_pre)) +
-                    (len(sc.devices) * sc.sample_size * (sc.i_block_end -
-                            sc.i_block_start))).start()
-    sim_data = []
-    modes_data = []
     sample_data = []
-    if sc.i_block_end - sc.i_block_start == 0:
-        return (np.zeros((len(sc.devices), 4, (sc.i_block_start - sc.i_start) / 15)),
-                np.zeros((len(sc.devices), sc.sample_size, 0)),
-                np.zeros((len(sc.devices), sc.sample_size, 0)))
+    # print('--- Simulating init phase [pre, start - 1]')
     for d in sc.devices:
-        # Pre-Simulation
         simulate(d, sc.i_pre, sc.i_start, progress)
-        # Simulation
-        sim_data.append(simulate(d, sc.i_start, sc.i_block_start, progress))
-        # Save state
-        packer = xdrlib.Packer()
-        d.save_state(packer)
-        tmpf = NamedTemporaryFile(mode='wb', dir='/tmp', delete=False)
-        tmpf.write(packer.get_buffer())
-        tmpf.close()
-        sc.state_files.append(tmpf.name)
-        # Sampling
-        modes, sample = create_sample(d, sc.sample_size, sc.i_block_start,
-                                      sc.i_block_end, progress, noise=sc.svsm)
-        modes_data.append(modes)
+    # print('--- Simulating [start, end]')
+    for d in sc.devices:
+        sim_data.append(simulate(d, sc.i_start, sc.i_end, progress))
+    # print('--- Generating %d samples for [start, end]' % sc.sample_size)
+    for d in sc.devices:
+        sample = create_sample(d, sc.sample_size, sc.i_start, sc.i_end,
+                                      progress, noise=sc.sample_noise)
         sample_data.append(sample)
     print()
-    return np.array(sim_data), np.array(modes_data), np.array(sample_data)
+    return np.array(sim_data), np.array(sample_data)
 
 
-def run_schedule(sc):
-    print('--- Simulating controlled behaviour in [block_start, block_end]')
-    p_sim = PBar(len(sc.devices) * (sc.i_block_end - sc.i_block_start)).start()
-    basedir = os.path.dirname(sc.loaded_from)
-    schedules = np.load(os.path.join(basedir, sc.sched_file))
-    samples_file = np.load(os.path.join(basedir, sc.run_pre_samplesfile))
-    modes_file = np.load(os.path.join(basedir, sc.run_pre_modesfile))
-    sim_data = []
-    for d, statefile, sched, modes, samples in zip(
-            sc.devices, sc.state_files, schedules, modes_file, samples_file):
-        # Load state
-        with open(statefile, 'rb') as data:
-            unpacker = xdrlib.Unpacker(data.read())
-            d.load_state(unpacker)
-        os.remove(statefile)
-        if hasattr(d.components, 'direct_scheduler'):
-            # Find modes for schedule
-            if sched in samples:
-                # Matching sample found, select mode directly
-                mode = modes[np.where(samples == sched)]
-            else:
-                # No matching sample, select the most similar one
-                mode, dist = None, None
-                for i, sample in enumerate(samples):
-                    r = np.sqrt(np.sum((np.array(sched) - np.array(sample))**2))
-                    if dist is None or r < dist:
-                        dist = r
-                        mode = modes[i]
-            # Set operational mode
-            d.components.direct_scheduler.schedule = mode.tolist()
-        else:
-            if d.typename == 'heatpump':
-                # This is a consumer, so negate P_el
-                sched = sched * (-1.0)
-            # No modes available, use power schedule
-            d.components.scheduler.schedule = sched.tolist()
-        # Simulate
-        sim_data.append(simulate(d, sc.i_block_start, sc.i_block_end, p_sim))
-        # Save state
-        packer = xdrlib.Packer()
-        d.save_state(packer)
-        tmpf = NamedTemporaryFile(mode='wb', dir='/tmp', delete=False)
-        tmpf.write(packer.get_buffer())
-        tmpf.close()
-        sc.state_files_ctrl.append(tmpf.name)
-    print()
-    return np.array(sim_data)
+if __name__ == '__main__':
+    sc_file = sys.argv[1]
+    sc = scenario_factory.Scenario()
+    sc.load_JSON(sc_file)
+    sc.run_timestamp = datetime.datetime.now()
 
+    d = os.path.dirname(sc_file)
+    sim_dfn = str(os.path.join(d, '.'.join((str(sc.seed), 'simulation', 'npy'))))
+    if os.path.exists(sim_dfn):
+        raise RuntimeError('File already exists: %s' % sim_dfn)
+    sam_dfn = str(os.path.join(d, '.'.join((str(sc.seed), 'samples', 'npy'))))
+    if os.path.exists(sam_dfn):
+        raise RuntimeError('File already exists: %s' % sam_dfn)
 
-def run_post(sc):
-    print('--- Simulating uncontrolled behavior in [block_end, end]')
-    p_sim = PBar(len(sc.devices) * (sc.i_end - sc.i_block_end)).start()
-    if sc.i_block_end - sc.i_block_start == 0:
-        return np.zeros((len(sc.devices), 4, (sc.i_end - sc.i_block_end) / 15))
-    sim_data = []
-    for d, statefile in zip(sc.devices, sc.state_files_ctrl):
-        # Load state
-        with open(statefile, 'rb') as data:
-            unpacker = xdrlib.Unpacker(data.read())
-            d.load_state(unpacker)
-        os.remove(statefile)
-        # Simulate
-        sim_data.append(simulate(d, sc.i_block_end, sc.i_end, p_sim))
-    print()
-    return np.array(sim_data)
+    sim_data, sample_data = run(sc)
+    np.save(sim_dfn, sim_data)
+    np.save(sam_dfn, sample_data)
+    sc.simulation_file = os.path.basename(sim_dfn)
+    sc.samples_file = os.path.basename(sam_dfn)
+    sc.save_JSON(sc_file)

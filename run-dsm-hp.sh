@@ -8,9 +8,9 @@ abort() {
 }
 
 SC_SPREAD_SLP='{
-  "title": "Spreadreduce-SLP-111-HP",
+  "title": "Spreadreduce-SLP-111-30er-HP",
   "seed": 0,
-  "sample_size": 200,
+  "sample_size": 1000,
   "t_pre": [2010, 3, 25],
   "t_start": [2010, 4, 1],
   "t_block_start": [2010, 4, 2],
@@ -22,12 +22,12 @@ SC_SPREAD_SLP='{
     ["Vaillant EcoPower 3.0", 0],
     ["Vaillant EcoPower 4.7", 0],
     ["Vaillant EcoPower 20.0", 0],
-    ["Stiebel Eltron WPF 5", 111],
+    ["Stiebel Eltron WPF 5", 0],
     ["Stiebel Eltron WPF 7", 0],
     ["Stiebel Eltron WPF 10", 0],
     ["Stiebel Eltron WPF 13", 0],
     ["Weishaupt WWP S 24", 0],
-    ["Weishaupt WWP S 30", 0],
+    ["Weishaupt WWP S 30", 111],
     ["Weishaupt WWP S 37", 0],
     ["RedoxFlow 100 kWh", 0]
   ],
@@ -52,8 +52,9 @@ abort $?
 
 echo "--- Running COHDA for [block_start, block_end]"
 OLD_PWD=$(pwd)
-source /home/chh/.virtualenv/jpype/bin/activate
-cd ../crystal-jpype/src
+# source /home/chh/.virtualenv/jpype/bin/activate
+deactivate
+cd ../cohda-fast/src
 python appsim.py "$SC_FILE"
 abort $?
 cd $OLD_PWD

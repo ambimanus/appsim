@@ -172,7 +172,7 @@ def plot_aggregated_SLP(sc, bd, unctrl, ctrl, ctrl_sched, res=1):
     xspace = (t[-1] - t[-2])
     ax[0].set_xlim(t[0], t[-1] + xspace)
 
-    l_unctrl, = ax[0].plot_date(t, P_el_unctrl / 1000.0, fmt='-', color=PRIMA, drawstyle='steps-post', lw=0.5, label='ungesteuert')
+    l_unctrl, = ax[0].plot_date(t, P_el_unctrl / 1000.0, fmt='-', color=PRIMB, drawstyle='steps-post', lw=0.5, label='ungesteuert')
     # l_unctrl.set_dashes([1.0, 1.0])
     # add lw=0.0 due to bug in mpl (will show as hairline in pdf though...)
     l_ctrl = ax[0].fill_between(ft, P_el_ctrl_fill / 1000.0, facecolors=PRIM+(0.5,), edgecolors=EC, lw=0.0)

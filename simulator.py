@@ -67,12 +67,12 @@ def create_sample(d, sample_size, t_start, t_end, progress, density=None, noise=
         sampler = device.components.sampler
         sampler.setpoint_density = density
         modes = None
-        sample = np.array(sampler.sample(sample_size, duration=int(d / 15)))
+        sample = np.array(sampler.sample(sample_size, duration=int(d / 15), perfect=1))
     elif hasattr(device.components, 'hires_sampler'):
         sampler = device.components.hires_sampler
         sampler.setpoint_density = density
-        modes, sample = np.array(sampler.sample(sample_size, duration=d)
-                                ).swapaxes(0, 1)
+        modes, sample = np.array(sampler.sample(sample_size, duration=d,
+                perfect=1)).swapaxes(0, 1)
         sample = resample(sample, 15)
     elif hasattr(device.components, 'minmax_sampler'):
         sampler = device.components.minmax_sampler

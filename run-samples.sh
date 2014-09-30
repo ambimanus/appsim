@@ -7,10 +7,10 @@ abort() {
   fi
 }
 
-SC_SPREAD_SLP='{
+SC='{
   "title": "Samples",
   "seed": 0,
-  "sample_size": 2,
+  "sample_size": 100,
   "t_pre": [2010, 3, 25],
   "t_start": [2010, 4, 1],
   "t_block_start": [2010, 4, 2],
@@ -43,7 +43,7 @@ abort $?
 
 source /home/chh/.virtualenv/appsim/bin/activate
 abort $?
-SC_FILE=$(python prepare_scenario.py "$SC_SPREAD_SLP" "$REV")
+SC_FILE=$(python prepare_scenario.py "$SC" "$REV")
 abort $?
 python run_unctrl.py "$SC_FILE"
 abort $?

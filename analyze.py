@@ -1,3 +1,5 @@
+# coding=utf-8
+
 import sys
 import os
 import csv
@@ -146,12 +148,14 @@ def plot_aggregated_SLP(sc, bd, unctrl, ctrl, ctrl_sched, res=1):
     T_storage_ctrl = ctrl[:,2,skip + i_block_start:skip + i_block_end]
 
     slp = _read_slp(sc, bd)[skip + i_block_start:skip + i_block_end]
-    diff_ctrl = (P_el_ctrl - P_el_unctrl) / 1000.0
+    # diff_ctrl = (P_el_ctrl - P_el_unctrl) / 1000.0
+    diff_ctrl = (P_el_sched - P_el_unctrl) / 1000.0
     diff_ctrl_fill = np.repeat((slp + diff_ctrl)[:-1], 2)
     slp_fill = np.repeat(slp[:-1], 2)
 
     ft = np.array([t[0]] + list(np.repeat(t[1:-1], 2)) + [t[-1]])
-    P_el_ctrl_fill = np.repeat(P_el_ctrl[:-1], 2)
+    # P_el_ctrl_fill = np.repeat(P_el_ctrl[:-1], 2)
+    P_el_ctrl_fill = np.repeat(P_el_sched[:-1], 2)
 
     fig = plt.figure(figsize=(6.39, 4.25))
     ax0 = fig.add_subplot(311)
@@ -168,13 +172,13 @@ def plot_aggregated_SLP(sc, bd, unctrl, ctrl, ctrl_sched, res=1):
     xspace = (t[-1] - t[-2])
     ax[0].set_xlim(t[0], t[-1] + xspace)
 
-    l_unctrl, = ax[0].plot_date(t, P_el_unctrl / 1000.0, fmt=':', color=PRIMB, drawstyle='steps-post', lw=0.75)
-    l_unctrl.set_dashes([1.0, 1.0])
+    l_unctrl, = ax[0].plot_date(t, P_el_unctrl / 1000.0, fmt='-', color=PRIMA, drawstyle='steps-post', lw=0.5, label='ungesteuert')
+    # l_unctrl.set_dashes([1.0, 1.0])
     # add lw=0.0 due to bug in mpl (will show as hairline in pdf though...)
     l_ctrl = ax[0].fill_between(ft, P_el_ctrl_fill / 1000.0, facecolors=PRIM+(0.5,), edgecolors=EC, lw=0.0)
     # Create proxy artist as l_ctrl legend handle
     l_ctrl_proxy = Rectangle((0, 0), 1, 1, fc=PRIM, ec=WHITE, lw=0.0, alpha=0.5)
-    l_sched, = ax[0].plot_date(t, P_el_sched / 1000.0, fmt='-', color=PRIM, drawstyle='steps-post', lw=0.75)
+    l_sched, = ax[0].plot_date(t, P_el_sched / 1000.0, fmt='-', color=PRIM, drawstyle='steps-post', lw=0.75, label='gesteuert')
 
     # colors = [
     #                 '#348ABD', # blue
@@ -203,22 +207,32 @@ def plot_aggregated_SLP(sc, bd, unctrl, ctrl, ctrl_sched, res=1):
     ax[1].set_ylabel('T$_{\mathrm{storage}}\;[^{\circ}\mathrm{C}]$', labelpad=9)
     for v in T_storage_ctrl:
         ax[1].plot_date(t, v - 273.0, fmt='-', color=PRIMA, alpha=0.25, lw=0.5)
-    l_T_med, = ax[1].plot_date(t, T_storage_ctrl.mean(0) - 273.0, fmt='-', color=PRIMA, alpha=0.75, lw=1.5)
+    l_T_med, = ax[1].plot_date(t, T_storage_ctrl.mean(0) - 273.0, fmt='-', color=PRIMA, alpha=0.75, lw=1.5, label='Mittelwert')
+    # l_T_med, = ax[1].plot_date(t, np.median(T_storage_ctrl, 0) - 273.0, fmt='-', color=PRIMA, alpha=0.75, lw=1.5, label='Median')
 
     ax[2].set_ylabel('P$_{el}$ [kW]')
     ax[2].set_xlabel('Tageszeit')
     ymin = min(slp.min(), (slp + diff_ctrl).min())
     ax[2].set_ylim(ymin + (ymin * 0.1), 0)
-    ax[2].plot_date(t, slp, fmt='-', color=PRIMB, drawstyle='steps-post', lw=0.75, label='Tageslastprofil')
-    ax[2].fill_between(ft, diff_ctrl_fill, slp_fill, where=diff_ctrl_fill>=slp_fill, facecolors=PRIM+(0.5,), edgecolors=EC, lw=0.0)
-    ax[2].fill_between(ft, diff_ctrl_fill, slp_fill, where=diff_ctrl_fill<slp_fill, facecolors=PRIMB+(0.5,), edgecolors=EC, lw=0.0)
+    ax[2].plot_date(t, slp, fmt='-', color=PRIMA, drawstyle='steps-post', lw=0.5, label='ungesteuert')
+    ax[2].fill_between(ft, diff_ctrl_fill, slp_fill, where=diff_ctrl_fill>=slp_fill, facecolors=PRIMA+(0.5,), edgecolors=EC, lw=0.0)
+    ax[2].fill_between(ft, diff_ctrl_fill, slp_fill, where=diff_ctrl_fill<slp_fill, facecolors=PRIMA+(0.5,), edgecolors=EC, lw=0.0)
+    ax[2].plot_date(t, slp + diff_ctrl, fmt='-', color=PRIM, drawstyle='steps-post', lw=0.75, label='gesteuert')
 
-    ax[0].legend([l_sched, l_unctrl, l_ctrl_proxy, l_T_med],
-                 ['Verbundfahrplan', 'ungesteuert', 'gesteuert', 'Speichertemperaturen (Median)'],
-                 bbox_to_anchor=(0., 1.05, 1., .105), loc=8, ncol=4,
-                 handletextpad=0.2, mode='expand', handlelength=3,
-                 borderaxespad=0.25, fancybox=False, fontsize='x-small')
-    ax[2].legend(loc=1, fancybox=False, fontsize='x-small')
+    # ax[0].legend([l_sched, l_unctrl, l_T_med],
+    #              ['Verbundfahrplan', 'ungesteuert', 'Speichertemperaturen (Median)'],
+    #              bbox_to_anchor=(0., 1.05, 1., .105), loc=8, ncol=4,
+    #              handletextpad=0.2, mode='expand', handlelength=3,
+    #              borderaxespad=0.25, fancybox=False, fontsize='x-small')
+    ax[0].text(0.5, 1.05, 'Verbundfahrplan', ha='center', va='center',
+             fontsize='small', transform=ax[0].transAxes)
+    ax[1].text(0.5, 1.05, 'Speichertemperaturen', ha='center', va='center',
+             fontsize='small', transform=ax[1].transAxes)
+    ax[2].text(0.5, 1.05, 'Tageslastprofil', ha='center', va='center',
+             fontsize='small', transform=ax[2].transAxes)
+    ax[0].legend(loc='lower right', fancybox=False, fontsize='x-small')
+    ax[1].legend(loc='lower right', fancybox=False, fontsize='x-small')
+    ax[2].legend(loc='upper right', fancybox=False, fontsize='x-small')
 
     fig.autofmt_xdate()
     ax[0].xaxis.get_major_formatter().scaled[1/24.] = '%H:%M'
@@ -252,6 +266,22 @@ def plot_samples(sc, basedir, idx=None):
         for s in samples:
             ax[i].plot_date(t, s, fmt='-', drawstyle='steps-post', lw=0.75)
     fig.autofmt_xdate()
+
+
+def plot_samples_carpet(sc, basedir, idx=None):
+    sample_data = np.load(p(basedir, sc.run_pre_samplesfile))
+    if idx is not None:
+        sample_data = sample_data[idx].reshape((1,) + sample_data.shape[1:])
+    fig, ax = plt.subplots(len(sample_data))
+    if len(sample_data) == 1:
+        ax = [ax]
+    for i, samples in enumerate(sample_data):
+        ax[i].imshow(samples, interpolation='nearest', cmap=plt.get_cmap('binary'), aspect='auto')
+        # ax[i].autoscale('x', tight=True)
+        ax[i].set_xlabel('Operation schedule interval')
+        ax[i].set_ylabel('Sample no.')
+        ax[i].grid(False)
+    fig.tight_layout()
 
 
 def norm(minimum, maximum, value):
@@ -336,9 +366,10 @@ def run(sc_file):
     sc.load_JSON(sc_file)
     print(sc.title)
 
-    plot_samples(sc, bd)
-    plt.show()
-    sys.exit(0)
+    # # plot_samples(sc, bd)
+    # plot_samples_carpet(sc, bd)
+    # plt.show()
+    # sys.exit(0)
 
     unctrl = np.load(p(bd, sc.run_unctrl_datafile))
     pre = np.load(p(bd, sc.run_pre_datafile))

@@ -114,14 +114,25 @@ def stats(fn):
         print('obj(%s, %s) = %.2f kW (%.2f %%)' % (tname, dname, diff, perf_abs))
         st.append(perf_abs)
 
-    # SLP
-    diff_ctrl = (P_el_ctrl - P_el_unctrl) / 1000.0
-    slp_ctrl = slp + diff_ctrl
+    # # SLP
+    # diff_ctrl = (P_el_ctrl - P_el_unctrl) / 1000.0
+    # slp_ctrl = slp + diff_ctrl
+    # slp_range = abs(slp.max() - slp.min())
+    # slp_range_ctrl = abs(slp_ctrl.max() - slp_ctrl.min())
+    # reduction = (1 - norm(0, slp_range, slp_range_ctrl)) * 100
+    # print('slp range = %.2f kW' % slp_range)
+    # print('slp range (ctrl) = %.2f kW' % slp_range_ctrl)
+    # print('reduction = %.2f %%' % reduction)
+    # st.append(reduction)
+
+    # SLP (only schedule)
+    diff_sched = (P_el_sched - P_el_unctrl) / 1000.0
+    slp_sched = slp + diff_sched
     slp_range = abs(slp.max() - slp.min())
-    slp_range_ctrl = abs(slp_ctrl.max() - slp_ctrl.min())
-    reduction = (1 - norm(0, slp_range, slp_range_ctrl)) * 100
+    slp_range_sched = abs(slp_sched.max() - slp_sched.min())
+    reduction = (1 - norm(0, slp_range, slp_range_sched)) * 100
     print('slp range = %.2f kW' % slp_range)
-    print('slp range (ctrl) = %.2f kW' % slp_range_ctrl)
+    print('slp range (sched) = %.2f kW' % slp_range_sched)
     print('reduction = %.2f %%' % reduction)
     st.append(reduction)
 

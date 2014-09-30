@@ -8,9 +8,9 @@ abort() {
 }
 
 SC_SPREAD_SLP='{
-  "title": "Spreadreduce-SLP-111-30er-HP",
+  "title": "Spreadreduce-SLP-111-HP",
   "seed": 0,
-  "sample_size": 10,
+  "sample_size": 200,
   "t_pre": [2010, 3, 25],
   "t_start": [2010, 4, 1],
   "t_block_start": [2010, 4, 2],

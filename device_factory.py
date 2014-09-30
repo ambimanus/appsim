@@ -127,8 +127,8 @@ def create_heater(seed, id, model, T_min, T_max, storage_weight, storage_loss,
         #         chp.BoostHeater(), SuccessiveSampler()], seed=seed)
         device = Device('heatpump', id, [Consumer(), HeatDemand(),
                 hp.RandomHeatSource(), Storage(), hp.Engine(), Scheduler(),
-                chp.BoostHeater(), SuccessiveSampler()], seed=seed)
-               # chp.BoostHeater(), MinMaxSampler()], seed=seed)
+                # chp.BoostHeater(), SuccessiveSampler()], seed=seed)
+                chp.BoostHeater(), MinMaxSampler()], seed=seed)
     else:
         raise(TypeError('unknown model:', model))
 

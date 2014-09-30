@@ -8,9 +8,9 @@ abort() {
 }
 
 SC_SPREAD_SLP='{
-  "title": "Spreadreduce-SLP-111-30er-HP",
+  "title": "Samples",
   "seed": 0,
-  "sample_size": 10,
+  "sample_size": 2,
   "t_pre": [2010, 3, 25],
   "t_start": [2010, 4, 1],
   "t_block_start": [2010, 4, 2],
@@ -22,7 +22,7 @@ SC_SPREAD_SLP='{
     ["Vaillant EcoPower 3.0", 0],
     ["Vaillant EcoPower 4.7", 0],
     ["Vaillant EcoPower 20.0", 0],
-    ["Stiebel Eltron WPF 5", 111],
+    ["Stiebel Eltron WPF 5", 1],
     ["Stiebel Eltron WPF 7", 0],
     ["Stiebel Eltron WPF 10", 0],
     ["Stiebel Eltron WPF 13", 0],
@@ -50,21 +50,21 @@ abort $?
 python run_pre.py "$SC_FILE"
 abort $?
 
-echo "--- Running COHDA for [block_start, block_end]"
-OLD_PWD=$(pwd)
-# source /home/chh/.virtualenv/jpype/bin/activate
-deactivate
-cd ../cohda-fast/src
-python appsim.py "$SC_FILE"
-abort $?
-cd $OLD_PWD
+# echo "--- Running COHDA for [block_start, block_end]"
+# OLD_PWD=$(pwd)
+# # source /home/chh/.virtualenv/jpype/bin/activate
+# deactivate
+# cd ../cohda-fast/src
+# python appsim.py "$SC_FILE"
+# abort $?
+# cd $OLD_PWD
 
-source /home/chh/.virtualenv/appsim/bin/activate
-abort $?
-python run_schedule.py "$SC_FILE"
-abort $?
-python run_post.py "$SC_FILE"
-abort $?
+# source /home/chh/.virtualenv/appsim/bin/activate
+# abort $?
+# python run_schedule.py "$SC_FILE"
+# abort $?
+# python run_post.py "$SC_FILE"
+# abort $?
 
 echo "Simulation done, see $(dirname $SC_FILE)"
 

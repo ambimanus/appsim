@@ -227,6 +227,17 @@ def plot_aggregated_SLP(sc, bd, unctrl, ctrl, ctrl_sched, res=1):
 
 
 def plot_samples(sc, basedir, idx=None):
+    res = 15
+    t_day_start = sc.t_block_start - timedelta(hours=sc.t_block_start.hour,
+                                               minutes=sc.t_block_start.minute)
+    skip = (t_day_start - sc.t_start).total_seconds() / 60 / res
+    i_block_start = (sc.t_block_start - t_day_start).total_seconds() / 60 / res
+    i_block_end = (sc.t_block_end - t_day_start).total_seconds() / 60 / res
+    t = drange(sc.t_block_start, sc.t_block_end, timedelta(minutes=res))
+
+    unctrl = np.load(p(basedir, sc.run_unctrl_datafile))
+    P_el_unctrl = unctrl[:,0,skip + i_block_start:skip + i_block_end].sum(0)
+
     sample_data = np.load(p(basedir, sc.run_pre_samplesfile))
     if idx is not None:
         sample_data = sample_data[idx].reshape((1,) + sample_data.shape[1:])
@@ -234,9 +245,13 @@ def plot_samples(sc, basedir, idx=None):
     if len(sample_data) == 1:
         ax = [ax]
     for i, samples in enumerate(sample_data):
-        t = np.arange(samples.shape[-1])
+        # t = np.arange(samples.shape[-1])
+        # ax[i].plot(t, P_el_unctrl, ls=':')
+        l_unctrl, = ax[i].plot_date(t, P_el_unctrl, fmt=':', color=PRIMB, drawstyle='steps-post', lw=0.75)
+        l_unctrl.set_dashes([1.0, 1.0])
         for s in samples:
-            ax[i].plot(t, s)
+            ax[i].plot_date(t, s, fmt='-', drawstyle='steps-post', lw=0.75)
+    fig.autofmt_xdate()
 
 
 def norm(minimum, maximum, value):
@@ -321,8 +336,9 @@ def run(sc_file):
     sc.load_JSON(sc_file)
     print(sc.title)
 
-    # plot_samples(sc, bd)
-    # plt.show()
+    plot_samples(sc, bd)
+    plt.show()
+    sys.exit(0)
 
     unctrl = np.load(p(bd, sc.run_unctrl_datafile))
     pre = np.load(p(bd, sc.run_pre_datafile))

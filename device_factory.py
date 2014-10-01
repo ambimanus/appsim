@@ -1,6 +1,6 @@
 # coding=utf-8
 
-from appliancesim.ext.device import Device, Consumer, SuccessiveSampler, MinMaxSampler, ModulatingSampler, HiResSampler
+from appliancesim.ext.device import Device, Consumer, SuccessiveSampler, MinMaxSampler, ModulatingSampler, SpecialSampler
 from appliancesim import data as appdata
 from appliancesim.ext.thermal import HeatDemand
 from chpsim.CHP import Storage, Scheduler
@@ -112,13 +112,13 @@ def create_heater(seed, id, model, T_min, T_max, storage_weight, storage_loss,
                     chp.Engine(), Scheduler(), chp.BoostHeater(),
                     # SuccessiveSampler()], seed=seed)
                     # MinMaxSampler()], seed=seed)
-                    HiResSampler()], seed=seed)
+                    SpecialSampler()], seed=seed)
         else:
             device = Device('chp', id, [Consumer(), HeatDemand(), Storage(),
                     chp.Engine(), Scheduler(), chp.BoostHeater(),
                     # SuccessiveSampler()], seed=seed)
                     # ModulatingSampler()], seed=seed)
-                    HiResSampler()], seed=seed)
+                    SpecialSampler()], seed=seed)
         # Minimale Verweilzeit je gefahrenem Betriebsmodus
         device.components.engine.min_step_duration = 60
         # initiale Werte für Verlaufs-Schätzer
@@ -133,7 +133,7 @@ def create_heater(seed, id, model, T_min, T_max, storage_weight, storage_loss,
                 hp.RandomHeatSource(), Storage(), hp.Engine(), Scheduler(),
                 # chp.BoostHeater(), SuccessiveSampler()], seed=seed)
                 # chp.BoostHeater(), MinMaxSampler()], seed=seed)
-                chp.BoostHeater(), HiResSampler()], seed=seed)
+                chp.BoostHeater(), SpecialSampler()], seed=seed)
     else:
         raise(TypeError('unknown model:', model))
 

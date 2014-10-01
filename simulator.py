@@ -1,5 +1,6 @@
 import os
 import xdrlib
+import pickle
 from tempfile import NamedTemporaryFile
 
 import numpy as np
@@ -51,38 +52,38 @@ def simulate(device, start, end, progress, newline=False):
     return resample(data, 15)
 
 
-def create_sample(d, sample_size, t_start, t_end, progress, density=None, noise=False):
+def create_sample(device, sample_size, t_start, t_end, progress, density=None, noise=False):
     if density is None:
-        if d.typename == 'heatpump':
+        if device.typename == 'heatpump':
             density = 0.03
-        elif d.typename == 'chp':
+        elif device.typename == 'chp':
             density = 0.01
         else:
-            raise RuntimeError('unknown type: %s' % d.typename)
-    device = d.copy()
+            raise RuntimeError('unknown type: %s' % device.typename)
+    device = device.copy()
     d = (t_end - t_start)
     if d == 0:
-        return np.zeros((sample_size, 0)), np.zeros((sample_size, 0))
+        return np.zeros((sample_size, 0)), np.zeros((sample_size, 0)), []
+    states = None
+    sim_data = None
     if hasattr(device.components, 'sampler'):
         sampler = device.components.sampler
         sampler.setpoint_density = density
-        modes = None
         sample = np.array(sampler.sample(sample_size, duration=int(d / 15), perfect=1))
-    elif hasattr(device.components, 'hires_sampler'):
-        sampler = device.components.hires_sampler
+    elif hasattr(device.components, 'special_sampler'):
+        sampler = device.components.special_sampler
         sampler.setpoint_density = density
-        modes, sample = np.array(sampler.sample(sample_size, duration=d,
-                perfect=1)).swapaxes(0, 1)
-        sample = resample(sample, 15)
+        sim_data, states = sampler.sample(sample_size, duration=int(d / 15), perfect=1)
+        sim_data = np.array(sim_data).swapaxes(0, 1)
+        sample = sim_data[0]
+        # modes, sample = np.array(s).swapaxes(0, 1)
     elif hasattr(device.components, 'minmax_sampler'):
         sampler = device.components.minmax_sampler
         # sampler.setpoint_density = density    # not used in this sampler
-        modes = None
         sample = np.array(sampler.sample(sample_size, duration=int(d / 15)))
     elif hasattr(device.components, 'modulating_sampler'):
         sampler = device.components.modulating_sampler
         # sampler.setpoint_density = density    # not used in this sampler
-        modes = None
         sample = np.array(sampler.sample(sample_size, duration=int(d / 15)))
     else:
         raise RuntimeError('unknown sampler %s' %type(sampler))
@@ -99,7 +100,7 @@ def create_sample(d, sample_size, t_start, t_end, progress, density=None, noise=
         sample = sample * (-1.0)
 
     progress.update(progress.currval + (sample_size * d))
-    return modes, sample
+    return sample, states, sim_data
 
 
 def run_unctrl(sc):
@@ -123,8 +124,9 @@ def run_pre(sc):
                     (len(sc.devices) * sc.sample_size * (sc.i_block_end -
                             sc.i_block_start))).start()
     sim_data = []
-    modes_data = []
     sample_data = []
+    states_data = {}
+    sample_sim_data = []
     if sc.i_block_end - sc.i_block_start == 0:
         return (np.zeros((len(sc.devices), 4, (sc.i_block_start - sc.i_start) / 15)),
                 np.zeros((len(sc.devices), sc.sample_size, 0)),
@@ -142,12 +144,13 @@ def run_pre(sc):
         tmpf.close()
         sc.state_files.append(tmpf.name)
         # Sampling
-        modes, sample = create_sample(d, sc.sample_size, sc.i_block_start,
-                                      sc.i_block_end, progress, noise=sc.svsm)
-        modes_data.append(modes)
+        sample, states, s_sim_data = create_sample(d, sc.sample_size,
+                sc.i_block_start, sc.i_block_end, progress, noise=sc.svsm)
         sample_data.append(sample)
+        states_data[str(d.typename) + str(d.id)] = states
+        sample_sim_data.append(s_sim_data)
     print()
-    return np.array(sim_data), np.array(modes_data), np.array(sample_data)
+    return np.array(sim_data), np.array(sample_data), states_data, np.array(sample_sim_data)
 
 
 def run_schedule(sc):
@@ -156,36 +159,20 @@ def run_schedule(sc):
     basedir = os.path.dirname(sc.loaded_from)
     schedules = np.load(os.path.join(basedir, sc.sched_file))
     samples_file = np.load(os.path.join(basedir, sc.run_pre_samplesfile))
-    modes_file = np.load(os.path.join(basedir, sc.run_pre_modesfile))
     sim_data = []
-    for d, statefile, sched, modes, samples in zip(
-            sc.devices, sc.state_files, schedules, modes_file, samples_file):
+    sc.state_files_ctrl = {}
+    for d, statefile, sched, samples in zip(
+            sc.devices, sc.state_files, schedules, samples_file):
         # Load state
         with open(statefile, 'rb') as data:
             unpacker = xdrlib.Unpacker(data.read())
             d.load_state(unpacker)
         os.remove(statefile)
-        if hasattr(d.components, 'direct_scheduler'):
-            # Find modes for schedule
-            if sched in samples:
-                # Matching sample found, select mode directly
-                mode = modes[np.where(samples == sched)]
-            else:
-                # No matching sample, select the most similar one
-                mode, dist = None, None
-                for i, sample in enumerate(samples):
-                    r = np.sqrt(np.sum((np.array(sched) - np.array(sample))**2))
-                    if dist is None or r < dist:
-                        dist = r
-                        mode = modes[i]
-            # Set operational mode
-            d.components.direct_scheduler.schedule = mode.tolist()
-        else:
-            if d.typename == 'heatpump':
-                # This is a consumer, so negate P_el
-                sched = sched * (-1.0)
-            # No modes available, use power schedule
-            d.components.scheduler.schedule = sched.tolist()
+        if d.typename == 'heatpump':
+            # This is a consumer, so negate P_el
+            sched = sched * (-1.0)
+        # Set schedule
+        d.components.scheduler.schedule = sched.tolist()
         # Simulate
         sim_data.append(simulate(d, sc.i_block_start, sc.i_block_end, p_sim))
         # Save state
@@ -194,7 +181,35 @@ def run_schedule(sc):
         tmpf = NamedTemporaryFile(mode='wb', dir='/tmp', delete=False)
         tmpf.write(packer.get_buffer())
         tmpf.close()
-        sc.state_files_ctrl.append(tmpf.name)
+        sc.state_files_ctrl[str(d.typename) + str(d.id)] = tmpf.name
+    print()
+    return np.array(sim_data)
+
+
+# Alternative to run_schedule() which directly uses the states for the
+# respective sample that was selected by COHDA, instead of simulating the
+# schedule (states have been produced by the sampler for each generated sample,
+# see create_sample())
+def run_state(sc):
+    print('--- Loading controlled behaviour for selected samples in [block_start, block_end]')
+    assert hasattr(sc, 'run_pre_statesfile')
+    basedir = os.path.dirname(sc.loaded_from)
+    schedules = np.load(os.path.join(basedir, sc.sched_file))
+    all_samples = np.load(os.path.join(basedir, sc.run_pre_samplesfile))
+    sample_sim_data = np.load(os.path.join(basedir, sc.run_pre_samples_simdatafile))
+    sim_data = []
+    with open(os.path.join(basedir, sc.run_pre_statesfile), 'rb') as infile:
+        all_states = pickle.load(infile)
+    sc.state_files_ctrl = {}
+    for d, sched, samples, ssd in zip(
+            sc.devices, schedules, all_samples, sample_sim_data):
+        idx = np.where((samples == sched).all(axis=1))[0][0]
+        state = all_states[str(d.typename) + str(d.id)][idx]
+        tmpf = NamedTemporaryFile(mode='wb', dir='/tmp', delete=False)
+        tmpf.write(state)
+        tmpf.close()
+        sc.state_files_ctrl[str(d.typename) + str(d.id)] = tmpf.name
+        sim_data.append(ssd.swapaxes(0, 1)[idx])
     print()
     return np.array(sim_data)
 
@@ -205,7 +220,8 @@ def run_post(sc):
     if sc.i_block_end - sc.i_block_start == 0:
         return np.zeros((len(sc.devices), 4, (sc.i_end - sc.i_block_end) / 15))
     sim_data = []
-    for d, statefile in zip(sc.devices, sc.state_files_ctrl):
+    for d in sc.devices:
+        statefile = sc.state_files_ctrl[str(d.typename) + str(d.id)]
         # Load state
         with open(statefile, 'rb') as data:
             unpacker = xdrlib.Unpacker(data.read())

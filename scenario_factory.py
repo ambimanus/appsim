@@ -15,7 +15,7 @@ class Scenario(object):
     def _make_devices(self):
         self.devices = []
         idx = 0
-        for name, n in self.device_templates:
+        for name, n in sorted(self.device_templates):
             if name in CHP_MODELS:
                 func = CHP_MODELS[name]
             elif name in HP_MODELS:

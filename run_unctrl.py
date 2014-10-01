@@ -14,11 +14,11 @@ sc.load_JSON(sc_file)
 sc.run_unctrl_ts = datetime.datetime.now()
 
 d = os.path.dirname(sc_file)
-dfn = str(os.path.join(d, '.'.join((str(sc.seed), 'unctrl', 'npy'))))
+dfn = str(os.path.join(d, '.'.join((str(sc.seed), 'unctrl', 'npz'))))
 if os.path.exists(dfn):
     raise RuntimeError('File already exists: %s' % dfn)
 
 data = simulator.run_unctrl(sc)
-np.save(dfn, data)
+np.savez(dfn, **data)
 sc.run_unctrl_datafile = os.path.basename(dfn)
 sc.save_JSON(sc_file)

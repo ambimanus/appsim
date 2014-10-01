@@ -24,6 +24,12 @@ GRAY = (0.5, 0.5, 0.5)
 WHITE = (1, 1, 1)
 
 
+def load(f):
+    with np.load(f) as npz:
+        data = np.array([npz[k] for k in npz.keys()])
+    return data
+
+
 def plot_each_device(sc, unctrl, cntrl):
     t = drange(sc.t_start, sc.t_end, timedelta(minutes=1))
     for d_unctrl, d_ctrl in zip(unctrl, ctrl):
@@ -249,10 +255,10 @@ def plot_samples(sc, basedir, idx=None):
     i_block_end = (sc.t_block_end - t_day_start).total_seconds() / 60 / res
     t = drange(sc.t_block_start, sc.t_block_end, timedelta(minutes=res))
 
-    unctrl = np.load(p(basedir, sc.run_unctrl_datafile))
+    unctrl = load(p(basedir, sc.run_unctrl_datafile))
     P_el_unctrl = unctrl[:,0,skip + i_block_start:skip + i_block_end].sum(0)
 
-    sample_data = np.load(p(basedir, sc.run_pre_samplesfile))
+    sample_data = load(p(basedir, sc.run_pre_samplesfile))
     if idx is not None:
         sample_data = sample_data[idx].reshape((1,) + sample_data.shape[1:])
     fig, ax = plt.subplots(len(sample_data))
@@ -269,7 +275,7 @@ def plot_samples(sc, basedir, idx=None):
 
 
 def plot_samples_carpet(sc, basedir, idx=None):
-    sample_data = np.load(p(basedir, sc.run_pre_samplesfile))
+    sample_data = load(p(basedir, sc.run_pre_samplesfile))
     if idx is not None:
         sample_data = sample_data[idx].reshape((1,) + sample_data.shape[1:])
     fig, ax = plt.subplots(len(sample_data))
@@ -314,7 +320,7 @@ def _read_slp(sc, bd):
     # Scale values
     # if hasattr(sc, 'run_unctrl_datafile'):
     #    slp_norm = norm(slp.min(), slp.max(), slp)
-    #    unctrl = np.load(p(bd, sc.run_unctrl_datafile)).sum(0) / 1000
+    #    unctrl = load(p(bd, sc.run_unctrl_datafile)).sum(0) / 1000
     #    slp = slp_norm * (unctrl.max() - unctrl.min()) + unctrl.min()
     MS_day_mean = 13600   # kWh, derived from SmartNord Scenario document
     MS_15_mean = MS_day_mean / 96
@@ -371,11 +377,11 @@ def run(sc_file):
     # plt.show()
     # sys.exit(0)
 
-    unctrl = np.load(p(bd, sc.run_unctrl_datafile))
-    pre = np.load(p(bd, sc.run_pre_datafile))
-    block = np.load(p(bd, sc.run_ctrl_datafile))
-    post = np.load(p(bd, sc.run_post_datafile))
-    sched = np.load(p(bd, sc.sched_file))
+    unctrl = load(p(bd, sc.run_unctrl_datafile))
+    pre = load(p(bd, sc.run_pre_datafile))
+    block = load(p(bd, sc.run_ctrl_datafile))
+    post = load(p(bd, sc.run_post_datafile))
+    sched = load(p(bd, sc.sched_file))
 
     ctrl = np.zeros(unctrl.shape)
     idx = 0

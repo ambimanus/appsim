@@ -8,20 +8,20 @@ abort() {
 }
 
 SC_PEAKLOAD='{
-  "title": "Peakload-5-CHP",
-  "seed": 0,
-  "sample_size": 10,
+  "title": "Peakload-100-CHP-1",
+  "seed": 1,
+  "sample_size": 200,
   "t_pre": [2010, 3, 25],
   "t_start": [2010, 4, 1],
   "t_block_start": [2010, 4, 2, 9],
   "t_block_end": [2010, 4, 2, 20],
   "t_end": [2010, 4, 4],
   "objective": "epex",
-  "block": [10000],
+  "block": [100000],
   "device_templates": [
-    ["Vaillant EcoPower 1.0", 0],
-    ["Vaillant EcoPower 3.0", 0],
-    ["Vaillant EcoPower 4.7", 5],
+    ["Vaillant EcoPower 1.0", 50],
+    ["Vaillant EcoPower 3.0", 30],
+    ["Vaillant EcoPower 4.7", 20],
     ["Vaillant EcoPower 20.0", 0],
     ["Stiebel Eltron WPF 5", 0],
     ["Stiebel Eltron WPF 7", 0],
@@ -32,7 +32,6 @@ SC_PEAKLOAD='{
     ["Weishaupt WWP S 37", 0],
     ["RedoxFlow 100 kWh", 0]
   ],
-  "state_files": [],
   "sched_file": null,
   "svsm": false
 }'

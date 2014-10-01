@@ -106,16 +106,17 @@ def create_sample(device, sample_size, t_start, t_end, progress, density=None, n
 def run_unctrl(sc):
     print('--- Simulating uncontrolled behavior (full)')
     p_sim = PBar(len(sc.devices) * (sc.i_end - sc.i_pre)).start()
-    sim_data = []
+    sim_data = {}
     for d in sc.devices:
+        aid = str(d.typename) + str(d.id)
         # Create a shadow copy of the device to operate on
         d = d.copy()
         # Pre-Simulation
         simulate(d, sc.i_pre, sc.i_start, p_sim)
         # Simulation
-        sim_data.append(simulate(d, sc.i_start, sc.i_end, p_sim))
+        sim_data[aid] = simulate(d, sc.i_start, sc.i_end, p_sim)
     print()
-    return np.array(sim_data)
+    return sim_data
 
 
 def run_pre(sc):
@@ -123,34 +124,36 @@ def run_pre(sc):
     progress = PBar((len(sc.devices) * (sc.i_block_start - sc.i_pre)) +
                     (len(sc.devices) * sc.sample_size * (sc.i_block_end -
                             sc.i_block_start))).start()
-    sim_data = []
-    sample_data = []
+    sim_data = {}
+    sample_data = {}
     states_data = {}
-    sample_sim_data = []
+    sample_sim_data = {}
+    sc.state_files = {}
     if sc.i_block_end - sc.i_block_start == 0:
         return (np.zeros((len(sc.devices), 4, (sc.i_block_start - sc.i_start) / 15)),
                 np.zeros((len(sc.devices), sc.sample_size, 0)),
                 np.zeros((len(sc.devices), sc.sample_size, 0)))
     for d in sc.devices:
+        aid = str(d.typename) + str(d.id)
         # Pre-Simulation
         simulate(d, sc.i_pre, sc.i_start, progress)
         # Simulation
-        sim_data.append(simulate(d, sc.i_start, sc.i_block_start, progress))
+        sim_data[aid] = simulate(d, sc.i_start, sc.i_block_start, progress)
         # Save state
         packer = xdrlib.Packer()
         d.save_state(packer)
         tmpf = NamedTemporaryFile(mode='wb', dir='/tmp', delete=False)
         tmpf.write(packer.get_buffer())
         tmpf.close()
-        sc.state_files.append(tmpf.name)
+        sc.state_files[aid] = tmpf.name
         # Sampling
         sample, states, s_sim_data = create_sample(d, sc.sample_size,
                 sc.i_block_start, sc.i_block_end, progress, noise=sc.svsm)
-        sample_data.append(sample)
-        states_data[str(d.typename) + str(d.id)] = states
-        sample_sim_data.append(s_sim_data)
+        sample_data[aid] = sample
+        states_data[aid] = states
+        sample_sim_data[aid] = s_sim_data
     print()
-    return np.array(sim_data), np.array(sample_data), states_data, np.array(sample_sim_data)
+    return sim_data, sample_data, states_data, sample_sim_data
 
 
 def run_schedule(sc):
@@ -158,32 +161,33 @@ def run_schedule(sc):
     p_sim = PBar(len(sc.devices) * (sc.i_block_end - sc.i_block_start)).start()
     basedir = os.path.dirname(sc.loaded_from)
     schedules = np.load(os.path.join(basedir, sc.sched_file))
-    samples_file = np.load(os.path.join(basedir, sc.run_pre_samplesfile))
-    sim_data = []
+    sim_data = {}
     sc.state_files_ctrl = {}
-    for d, statefile, sched, samples in zip(
-            sc.devices, sc.state_files, schedules, samples_file):
+    for d in sc.devices:
+        aid = str(d.typename) + str(d.id)
         # Load state
+        statefile = sc.state_files[aid]
         with open(statefile, 'rb') as data:
             unpacker = xdrlib.Unpacker(data.read())
             d.load_state(unpacker)
         os.remove(statefile)
+        sched = schedules[aid]
         if d.typename == 'heatpump':
             # This is a consumer, so negate P_el
             sched = sched * (-1.0)
         # Set schedule
         d.components.scheduler.schedule = sched.tolist()
         # Simulate
-        sim_data.append(simulate(d, sc.i_block_start, sc.i_block_end, p_sim))
+        sim_data[aid] = simulate(d, sc.i_block_start, sc.i_block_end, p_sim)
         # Save state
         packer = xdrlib.Packer()
         d.save_state(packer)
         tmpf = NamedTemporaryFile(mode='wb', dir='/tmp', delete=False)
         tmpf.write(packer.get_buffer())
         tmpf.close()
-        sc.state_files_ctrl[str(d.typename) + str(d.id)] = tmpf.name
+        sc.state_files_ctrl[aid] = tmpf.name
     print()
-    return np.array(sim_data)
+    return sim_data
 
 
 # Alternative to run_schedule() which directly uses the states for the
@@ -197,21 +201,26 @@ def run_state(sc):
     schedules = np.load(os.path.join(basedir, sc.sched_file))
     all_samples = np.load(os.path.join(basedir, sc.run_pre_samplesfile))
     sample_sim_data = np.load(os.path.join(basedir, sc.run_pre_samples_simdatafile))
-    sim_data = []
+    sim_data = {}
     with open(os.path.join(basedir, sc.run_pre_statesfile), 'rb') as infile:
         all_states = pickle.load(infile)
     sc.state_files_ctrl = {}
-    for d, sched, samples, ssd in zip(
-            sc.devices, schedules, all_samples, sample_sim_data):
+    for d in sc.devices:
+    # for d, sched, samples, ssd in zip(
+    #         sc.devices, schedules, all_samples, sample_sim_data):
+        aid = str(d.typename) + str(d.id)
+        sched = schedules[aid]
+        samples = all_samples[aid]
+        ssd = sample_sim_data[aid]
         idx = np.where((samples == sched).all(axis=1))[0][0]
         state = all_states[str(d.typename) + str(d.id)][idx]
         tmpf = NamedTemporaryFile(mode='wb', dir='/tmp', delete=False)
         tmpf.write(state)
         tmpf.close()
         sc.state_files_ctrl[str(d.typename) + str(d.id)] = tmpf.name
-        sim_data.append(ssd.swapaxes(0, 1)[idx])
+        sim_data[aid] = ssd.swapaxes(0, 1)[idx]
     print()
-    return np.array(sim_data)
+    return sim_data
 
 
 def run_post(sc):
@@ -219,15 +228,16 @@ def run_post(sc):
     p_sim = PBar(len(sc.devices) * (sc.i_end - sc.i_block_end)).start()
     if sc.i_block_end - sc.i_block_start == 0:
         return np.zeros((len(sc.devices), 4, (sc.i_end - sc.i_block_end) / 15))
-    sim_data = []
+    sim_data = {}
     for d in sc.devices:
-        statefile = sc.state_files_ctrl[str(d.typename) + str(d.id)]
+        aid = str(d.typename) + str(d.id)
+        statefile = sc.state_files_ctrl[aid]
         # Load state
         with open(statefile, 'rb') as data:
             unpacker = xdrlib.Unpacker(data.read())
             d.load_state(unpacker)
         os.remove(statefile)
         # Simulate
-        sim_data.append(simulate(d, sc.i_block_end, sc.i_end, p_sim))
+        sim_data[aid] = simulate(d, sc.i_block_end, sc.i_end, p_sim)
     print()
-    return np.array(sim_data)
+    return sim_data

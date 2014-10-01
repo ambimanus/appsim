@@ -27,6 +27,7 @@ class Scenario(object):
             for i in range(n):
                 self.devices.append(func(idx, idx))
                 idx += 1
+        self.aids = [d.typename + str(d.id) for d in self.devices]
 
 
     def _make_timestamps(self):

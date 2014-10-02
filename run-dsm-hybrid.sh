@@ -7,7 +7,7 @@ abort() {
   fi
 }
 
-SC_SPREAD_SLP='{
+SC='{
   "title": "Spreadreduce-SLP-123-hybrid",
   "seed": 0,
   "sample_size": 200,
@@ -31,9 +31,6 @@ SC_SPREAD_SLP='{
     ["Weishaupt WWP S 37", 0],
     ["RedoxFlow 100 kWh", 0]
   ],
-  "state_files": [],
-  "state_files_ctrl": [],
-  "sched_file": null,
   "svsm": false,
   "slp_file": "/home/chh/data/crystal-chp/slp/2010_slp_profile_eon_mitte_ag/H0 - Haushalt.csv"
 }'
@@ -43,7 +40,7 @@ abort $?
 
 source /home/chh/.virtualenv/appsim/bin/activate
 abort $?
-SC_FILE=$(python prepare_scenario.py "$SC_SPREAD_SLP" "$REV")
+SC_FILE=$(python prepare_scenario.py "$SC" "$REV")
 abort $?
 python run_unctrl.py "$SC_FILE"
 abort $?
@@ -52,17 +49,19 @@ abort $?
 
 echo "--- Running COHDA for [block_start, block_end]"
 OLD_PWD=$(pwd)
-source /home/chh/.virtualenv/jpype/bin/activate
-cd ../crystal-jpype/src
+deactivate
+cd ../cohda-fast/src
 python appsim.py "$SC_FILE"
 abort $?
 cd $OLD_PWD
 
 source /home/chh/.virtualenv/appsim/bin/activate
 abort $?
-python run_schedule.py "$SC_FILE"
+python run_state.py "$SC_FILE"
 abort $?
 python run_post.py "$SC_FILE"
+abort $?
+python run_cleanup.py "$SC_FILE"
 abort $?
 
 echo "Simulation done, see $(dirname $SC_FILE)"

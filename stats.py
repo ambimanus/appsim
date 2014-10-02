@@ -36,6 +36,12 @@ def resample(d, resolution):
     return d.reshape(shape).sum(-1)/resolution
 
 
+def load(f):
+    with np.load(f) as npz:
+        data = np.array([npz[k] for k in sorted(npz.keys())])
+    return data
+
+
 def stats(fn):
     sc_file = fn
     bd = os.path.dirname(sc_file)
@@ -43,11 +49,11 @@ def stats(fn):
     sc.load_JSON(sc_file)
     print(sc.title)
 
-    unctrl = np.load(p(bd, sc.run_unctrl_datafile))
-    pre = np.load(p(bd, sc.run_pre_datafile))
-    block = np.load(p(bd, sc.run_ctrl_datafile))
-    post = np.load(p(bd, sc.run_post_datafile))
-    sched = np.load(p(bd, sc.sched_file))
+    unctrl = load(p(bd, sc.run_unctrl_datafile))
+    pre = load(p(bd, sc.run_pre_datafile))
+    block = load(p(bd, sc.run_ctrl_datafile))
+    post = load(p(bd, sc.run_post_datafile))
+    sched = load(p(bd, sc.sched_file))
 
     ctrl = np.zeros(unctrl.shape)
     idx = 0
@@ -173,27 +179,27 @@ def plot_stats(names, target_sched, target_ctrl, target_unctrl, sched_ctrl, sche
     import matplotlib.pyplot as plt
     from matplotlib.ticker import FixedLocator
 
-    fig = plt.figure(figsize=(6.39, 3.5))
-    fig.subplots_adjust(bottom=0.3, hspace=0.3)
+    fig = plt.figure(figsize=(6.39, 1.75))
+    fig.subplots_adjust(bottom=0.3)
     x = np.arange(len(names))
 
-    ax0 = fig.add_subplot(211)
+    ax0 = fig.add_subplot(111)
     ax0.set_ylim(50, 100)
     ax0.set_ylabel(r"""Planguete [\%]""", fontsize='small')
     ax0.grid(False, which='major', axis='x')
     bars = ax0.bar(x, target_sched, align='center', width=0.5, facecolor=PRIM+(0.5,), edgecolor=EC)
     autolabel(ax0, bars)
 
-    ax1 = fig.add_subplot(212, sharex=ax0)
-    ax1.set_ylim(50, 100)
-    ax1.set_ylabel(r"""Erbringung [\%]""", fontsize='small')
-    ax1.grid(False, which='major', axis='x')
-    bars = ax1.bar(x, target_ctrl, align='center', width=0.5, facecolor=PRIM+(0.5,), edgecolor=EC)
-    autolabel(ax1, bars)
+    # ax1 = fig.add_subplot(212, sharex=ax0)
+    # ax1.set_ylim(50, 100)
+    # ax1.set_ylabel(r"""Erbringung [\%]""", fontsize='small')
+    # ax1.grid(False, which='major', axis='x')
+    # bars = ax1.bar(x, target_ctrl, align='center', width=0.5, facecolor=PRIM+(0.5,), edgecolor=EC)
+    # autolabel(ax1, bars)
 
-    plt.setp(ax0.get_xticklabels(), visible=False)
-    ax1.xaxis.set_major_locator(FixedLocator(x))
-    ax1.set_xticklabels(names, fontsize='xx-small', rotation=45, rotation_mode='anchor', ha='right')
+    # plt.setp(ax0.get_xticklabels(), visible=False)
+    ax0.xaxis.set_major_locator(FixedLocator(x))
+    ax0.set_xticklabels(names, fontsize='xx-small', rotation=45, rotation_mode='anchor', ha='right')
     ax0.set_xlim(-0.5, x[-1] + 0.5)
 
     return fig
@@ -259,10 +265,10 @@ if __name__ == '__main__':
     fig = plot_stats(names, target_sched, target_ctrl, target_unctrl,
                      sched_ctrl, sched_unctrl, unctrl_ctrl)
     fig.savefig(p(os.path.split(dn)[0], 'stats.pdf'))
-    # import matplotlib.pyplot as plt
-    # plt.show()
+    import matplotlib.pyplot as plt
+    plt.show()
 
     fig = plot_syncs(names, sync_block_start, sync_block_end, sync_day_end,
                      sync_sim_end)
     fig.savefig(p(os.path.split(dn)[0], 'sync.pdf'))
-    # plt.show()
+    plt.show()

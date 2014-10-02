@@ -8,7 +8,7 @@ abort() {
 }
 
 SC='{
-  "title": "Peakload-100-HP",
+  "title": "Peakload-120-HP",
   "seed": 0,
   "sample_size": 200,
   "t_pre": [2010, 3, 25],
@@ -23,13 +23,13 @@ SC='{
     ["Vaillant EcoPower 3.0", 0],
     ["Vaillant EcoPower 4.7", 0],
     ["Vaillant EcoPower 20.0", 0],
-    ["Stiebel Eltron WPF 5", 15],
-    ["Stiebel Eltron WPF 7", 20],
-    ["Stiebel Eltron WPF 10", 20],
-    ["Stiebel Eltron WPF 13", 15],
-    ["Weishaupt WWP S 24", 15],
-    ["Weishaupt WWP S 30", 10],
-    ["Weishaupt WWP S 37", 5],
+    ["Stiebel Eltron WPF 5", 50],
+    ["Stiebel Eltron WPF 7", 50],
+    ["Stiebel Eltron WPF 10", 10],
+    ["Stiebel Eltron WPF 13", 10],
+    ["Weishaupt WWP S 24", 0],
+    ["Weishaupt WWP S 30", 0],
+    ["Weishaupt WWP S 37", 0],
     ["RedoxFlow 100 kWh", 0]
   ],
   "svsm": false

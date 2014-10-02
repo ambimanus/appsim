@@ -15,11 +15,9 @@ def resample(d, resolution):
 
 
 def simulate(device, start, end, progress, newline=False):
-    # Datenfelder
     headers = ['P_el', 'P_th', 'T', 'T_env']
     data = np.zeros((len(headers), end - start))
 
-    # Simulation
     if device.typename == 'battery':
         for now in range(start, end):
             device.step(now)
@@ -107,14 +105,29 @@ def run_unctrl(sc):
     print('--- Simulating uncontrolled behavior (full)')
     p_sim = PBar(len(sc.devices) * (sc.i_end - sc.i_pre)).start()
     sim_data = {}
+    sc.state_files_unctrl = {}
     for d in sc.devices:
         aid = str(d.typename) + str(d.id)
         # Create a shadow copy of the device to operate on
         d = d.copy()
         # Pre-Simulation
         simulate(d, sc.i_pre, sc.i_start, p_sim)
-        # Simulation
-        sim_data[aid] = simulate(d, sc.i_start, sc.i_end, p_sim)
+        # Simulate [i_start, block_start]
+        sim_data_b_start = simulate(d, sc.i_start, sc.i_block_start, p_sim)
+        # Simulate [block_start, block_end]
+        sim_data_b_end = simulate(d, sc.i_block_start, sc.i_block_end, p_sim)
+        # Save state (needed in run_states() below)
+        packer = xdrlib.Packer()
+        d.save_state(packer)
+        tmpf = NamedTemporaryFile(mode='wb', dir='/tmp', delete=False)
+        tmpf.write(packer.get_buffer())
+        tmpf.close()
+        sc.state_files_unctrl[aid] = tmpf.name
+        # Simulate [block_end, i_end]
+        sim_data_i_end = simulate(d, sc.i_block_end, sc.i_end, p_sim)
+        # Combine sim_data
+        sim_data[aid] = np.concatenate(
+                (sim_data_b_start, sim_data_b_end, sim_data_i_end), axis=1)
     print()
     return sim_data
 
@@ -206,19 +219,35 @@ def run_state(sc):
         all_states = pickle.load(infile)
     sc.state_files_ctrl = {}
     for d in sc.devices:
-    # for d, sched, samples, ssd in zip(
-    #         sc.devices, schedules, all_samples, sample_sim_data):
         aid = str(d.typename) + str(d.id)
         sched = schedules[aid]
         samples = all_samples[aid]
         ssd = sample_sim_data[aid]
-        idx = np.where((samples == sched).all(axis=1))[0][0]
-        state = all_states[str(d.typename) + str(d.id)][idx]
-        tmpf = NamedTemporaryFile(mode='wb', dir='/tmp', delete=False)
-        tmpf.write(state)
-        tmpf.close()
-        sc.state_files_ctrl[str(d.typename) + str(d.id)] = tmpf.name
-        sim_data[aid] = ssd.swapaxes(0, 1)[idx]
+        # import pdb
+        # pdb.set_trace()
+        # !for aidtmp in sc.aids: print('%s: %s' % (aidtmp, np.where((all_samples[aidtmp] == sched).all(axis=1))))
+        try:
+            # Search schedule in samples
+            idx = np.where((samples == sched).all(axis=1))[0][0]
+            state = all_states[aid][idx]
+            sim_data[aid] = ssd.swapaxes(0, 1)[idx]
+            tmpf = NamedTemporaryFile(mode='wb', dir='/tmp', delete=False)
+            tmpf.write(state)
+            tmpf.close()
+            sc.state_files_ctrl[aid] = tmpf.name
+        except IndexError:
+            # Schedule not found in sample, device keeps its initial (uncontrolled) schedule
+            b_start, b_end = sc.t_block_start, sc.t_block_end
+            div = 1
+            if (b_end - b_start).total_seconds() / 60 == sched.shape[-1] * 15:
+                div = 15
+            elif (b_end - b_start).total_seconds() / 60 == sched.shape[-1] * 60:
+                div = 60
+            b_s = (b_start - sc.t_start).total_seconds() / 60 / div
+            b_e = (b_end - sc.t_start).total_seconds() / 60 / div
+            unctrl = np.load(os.path.join(basedir, sc.run_unctrl_datafile))
+            sim_data[aid] = unctrl[aid][:,b_s:b_e]
+            sc.state_files_ctrl[aid] = sc.state_files_unctrl[aid]
     print()
     return sim_data
 
@@ -241,3 +270,9 @@ def run_post(sc):
         sim_data[aid] = simulate(d, sc.i_block_end, sc.i_end, p_sim)
     print()
     return sim_data
+
+
+def cleanup(sc):
+    print('--- Removing tmpfiles')
+    import pdb
+    pdb.set_trace()

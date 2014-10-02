@@ -7,9 +7,9 @@ abort() {
   fi
 }
 
-SC_PEAKLOAD='{
-  "title": "Peakload-100-CHP-1",
-  "seed": 1,
+SC='{
+  "title": "Peakload-50-CHP",
+  "seed": 0,
   "sample_size": 200,
   "t_pre": [2010, 3, 25],
   "t_start": [2010, 4, 1],
@@ -19,10 +19,10 @@ SC_PEAKLOAD='{
   "objective": "epex",
   "block": [100000],
   "device_templates": [
-    ["Vaillant EcoPower 1.0", 50],
-    ["Vaillant EcoPower 3.0", 30],
-    ["Vaillant EcoPower 4.7", 20],
-    ["Vaillant EcoPower 20.0", 0],
+    ["Vaillant EcoPower 1.0", 10],
+    ["Vaillant EcoPower 3.0", 15],
+    ["Vaillant EcoPower 4.7", 15],
+    ["Vaillant EcoPower 20.0", 10],
     ["Stiebel Eltron WPF 5", 0],
     ["Stiebel Eltron WPF 7", 0],
     ["Stiebel Eltron WPF 10", 0],
@@ -32,7 +32,6 @@ SC_PEAKLOAD='{
     ["Weishaupt WWP S 37", 0],
     ["RedoxFlow 100 kWh", 0]
   ],
-  "sched_file": null,
   "svsm": false
 }'
 
@@ -41,7 +40,7 @@ abort $?
 
 source /home/chh/.virtualenv/appsim/bin/activate
 abort $?
-SC_FILE=$(python prepare_scenario.py "$SC_PEAKLOAD" "$REV")
+SC_FILE=$(python prepare_scenario.py "$SC" "$REV")
 abort $?
 python run_unctrl.py "$SC_FILE"
 abort $?
@@ -50,7 +49,6 @@ abort $?
 
 echo "--- Running COHDA for [block_start, block_end]"
 OLD_PWD=$(pwd)
-# source /home/chh/.virtualenv/jpype/bin/activate
 deactivate
 cd ../cohda-fast/src
 python appsim.py "$SC_FILE"
@@ -62,6 +60,8 @@ abort $?
 python run_state.py "$SC_FILE"
 abort $?
 python run_post.py "$SC_FILE"
+abort $?
+python run_cleanup.py "$SC_FILE"
 abort $?
 
 echo "Simulation done, see $(dirname $SC_FILE)"

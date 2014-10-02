@@ -26,7 +26,7 @@ WHITE = (1, 1, 1)
 
 def load(f):
     with np.load(f) as npz:
-        data = np.array([npz[k] for k in npz.keys()])
+        data = np.array([npz[k] for k in sorted(npz.keys())])
     return data
 
 

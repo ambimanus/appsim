@@ -8,7 +8,7 @@ abort() {
 }
 
 SC='{
-  "title": "Peakload-130-hybrid",
+  "title": "Peakload-130-hybrid-doublesampler",
   "seed": 0,
   "sample_size": 200,
   "t_pre": [2010, 3, 25],

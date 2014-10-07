@@ -71,10 +71,20 @@ def create_sample(device, sample_size, t_start, t_end, progress, density=None, n
     elif hasattr(device.components, 'special_sampler'):
         sampler = device.components.special_sampler
         sampler.setpoint_density = density
-        sim_data, states = sampler.sample(sample_size, duration=int(d / 15), perfect=1)
+        # Apply different sample approaches
+        sim_data_1, states_1 = sampler.sample_old(sample_size / 4, duration=int(d / 15), perfect=0)
+        sim_data_2, states_2 = sampler.sample_old(sample_size / 4, duration=int(d / 15), perfect=1)
+        sim_data_3, states_3 = sampler.sample(sample_size / 4, duration=int(d / 15), perfect=0)
+        sim_data_4, states_4 = sampler.sample(sample_size / 4, duration=int(d / 15), perfect=1)
+        # Combine data
+        sim_data = sim_data_1 + sim_data_2 + sim_data_3 + sim_data_4
+        states = states_1 + states_2 + states_3 + states_4
+        # Data reshaping
         sim_data = np.array(sim_data).swapaxes(0, 1)
-        sample = sim_data[0]
-        # modes, sample = np.array(s).swapaxes(0, 1)
+        sample = np.array(sim_data[0])
+        if device.typename == 'heatpump':
+            # This is a consumer, so negate P_el
+            sim_data[0] = sim_data[0] * (-1.0)
     elif hasattr(device.components, 'minmax_sampler'):
         sampler = device.components.minmax_sampler
         # sampler.setpoint_density = density    # not used in this sampler
@@ -133,11 +143,10 @@ def run_unctrl(sc):
 
 
 def run_pre(sc):
-    print('--- Simulating uncontrolled behavior in [pre, start - 1] and [start, block_start]')
-    progress = PBar((len(sc.devices) * (sc.i_block_start - sc.i_pre)) +
+    print('--- Simulating uncontrolled behavior in [pre, start - 1] and generating samples')
+    progress = PBar((len(sc.devices) * (sc.i_start - sc.i_pre)) +
                     (len(sc.devices) * sc.sample_size * (sc.i_block_end -
-                            sc.i_block_start))).start()
-    sim_data = {}
+                            sc.i_start))).start()
     sample_data = {}
     states_data = {}
     sample_sim_data = {}
@@ -151,7 +160,7 @@ def run_pre(sc):
         # Pre-Simulation
         simulate(d, sc.i_pre, sc.i_start, progress)
         # Simulation
-        sim_data[aid] = simulate(d, sc.i_start, sc.i_block_start, progress)
+        # sim_data[aid] = simulate(d, sc.i_start, sc.i_block_start, progress)
         # Save state
         packer = xdrlib.Packer()
         d.save_state(packer)
@@ -161,12 +170,12 @@ def run_pre(sc):
         sc.state_files[aid] = tmpf.name
         # Sampling
         sample, states, s_sim_data = create_sample(d, sc.sample_size,
-                sc.i_block_start, sc.i_block_end, progress, noise=sc.svsm)
+                sc.i_start, sc.i_block_end, progress, noise=sc.svsm)
         sample_data[aid] = sample
         states_data[aid] = states
         sample_sim_data[aid] = s_sim_data
     print()
-    return sim_data, sample_data, states_data, sample_sim_data
+    return sample_data, states_data, sample_sim_data
 
 
 def run_schedule(sc):
@@ -223,8 +232,6 @@ def run_state(sc):
         sched = schedules[aid]
         samples = all_samples[aid]
         ssd = sample_sim_data[aid]
-        # import pdb
-        # pdb.set_trace()
         # !for aidtmp in sc.aids: print('%s: %s' % (aidtmp, np.where((all_samples[aidtmp] == sched).all(axis=1))))
         try:
             # Search schedule in samples
@@ -270,9 +277,3 @@ def run_post(sc):
         sim_data[aid] = simulate(d, sc.i_block_end, sc.i_end, p_sim)
     print()
     return sim_data
-
-
-def cleanup(sc):
-    print('--- Removing tmpfiles')
-    import pdb
-    pdb.set_trace()

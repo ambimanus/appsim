@@ -93,6 +93,8 @@ def stats(fn):
     ###########################################################################
     # code below calculates stats
 
+    print('mean load: %.2f kW' % (unctrl[:,0,:].sum(0).mean() / 1000.0))
+
     t_day_start = sc.t_block_start - timedelta(hours=sc.t_block_start.hour,
                                          minutes=sc.t_block_start.minute)
     skip = (t_day_start - sc.t_start).total_seconds() / 60 / 60
@@ -131,7 +133,7 @@ def stats(fn):
         perf_abs = perf * 100.0
         # if perf_abs > 100.0:
         #     perf_abs = 100 - min(100, max(0, perf_abs - 100))
-        print('obj(%s, %s) = %.2f kW (%.2f %%)' % (tname, dname, diff, perf_abs))
+        print('obj(%s, %s) = %.2f kW (%.2f %%)' % (tname, dname, diff / 1000.0, perf_abs))
         st.append(perf_abs)
 
 

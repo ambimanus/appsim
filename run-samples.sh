@@ -68,5 +68,5 @@ abort $?
 
 echo "Simulation done, see $(dirname $SC_FILE)"
 
-python analyze.py "$SC_FILE"
+python analyze-samples.py "$SC_FILE"
 abort $?

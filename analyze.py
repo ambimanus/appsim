@@ -120,13 +120,18 @@ def plot_aggregated(sc, bd, unctrl, ctrl, ctrl_sched, res=1):
     ax[1].axvline(t[len(t)/2], ls='-', color=GRAY, lw=0.5)
     for v in T_storage_ctrl:
         ax[1].plot_date(t, v - 273.0, fmt='-', color=PRIMA, alpha=0.25, lw=0.5)
-    l_T_med, = ax[1].plot_date(t, T_storage_ctrl.mean(0) - 273.0, fmt='-', color=PRIMA, alpha=0.75, lw=1.5)
+    # HP and CHP have different temperature ranges (HP: 40-50, CHP: 50-70)
+    crit = (T_storage_ctrl - 273 >= 50).all(axis=1)
+    T_CHP = T_storage_ctrl[crit]
+    T_HP = T_storage_ctrl[~crit]
+    l_T_med_CHP, = ax[1].plot_date(t, T_CHP.mean(0) - 273.0, fmt='-', color=PRIMA, alpha=0.75, lw=1.5)
+    l_T_med_HP, = ax[1].plot_date(t, T_HP.mean(0) - 273.0, fmt='-', color=PRIMA, alpha=0.75, lw=1.5)
 
     ax[0].xaxis.get_major_formatter().scaled[1/24.] = '%H:%M'
     ax[-1].set_xlabel('Tageszeit')
     fig.autofmt_xdate()
-    ax[1].legend([l_sched, l_unctrl, l_ctrl_proxy, l_T_med],
-                 ['Verbundfahrplan', 'ungesteuert', 'gesteuert', 'Speichertemperaturen (Median)'],
+    ax[1].legend([l_sched, l_unctrl, l_ctrl_proxy, l_T_med_CHP],
+                 ['Verbundfahrplan', 'ungesteuert', 'gesteuert', 'Speichertemperaturen (Mittelwert)'],
                  bbox_to_anchor=(0., 1.03, 1., .103), loc=8, ncol=4,
                  handletextpad=0.2, mode='expand', handlelength=3,
                  borderaxespad=0.25, fancybox=False, fontsize='x-small')
@@ -378,25 +383,33 @@ def run(sc_file):
     # sys.exit(0)
 
     unctrl = load(p(bd, sc.run_unctrl_datafile))
-    pre = load(p(bd, sc.run_pre_datafile))
+    # pre = load(p(bd, sc.run_pre_datafile))
     block = load(p(bd, sc.run_ctrl_datafile))
     post = load(p(bd, sc.run_post_datafile))
     sched = load(p(bd, sc.sched_file))
 
     ctrl = np.zeros(unctrl.shape)
     idx = 0
-    for l in (pre, block, post):
+    for l in (block, post):
         ctrl[:,:,idx:idx + l.shape[-1]] = l
         idx += l.shape[-1]
 
     if sched.shape[-1] == unctrl.shape[-1] / 15:
         print('Extending schedules shape by factor 15')
         sched = sched.repeat(15, axis=1)
+    t_start, b_start, b_end = sc.t_start, sc.t_block_start, sc.t_block_end
+    div = 1
+    if (b_end - t_start).total_seconds() / 60 == sched.shape[-1] * 15:
+        div = 15
+    elif (b_end - t_start).total_seconds() / 60 == sched.shape[-1] * 60:
+        div = 60
+    b_s = (b_start - sc.t_start).total_seconds() / 60 / div
+    b_e = (b_end - sc.t_start).total_seconds() / 60 / div
     ctrl_sched = np.zeros((unctrl.shape[0], unctrl.shape[-1]))
     ctrl_sched = np.ma.array(ctrl_sched)
-    ctrl_sched[:,:pre.shape[-1]] = np.ma.masked
-    ctrl_sched[:,pre.shape[-1]:pre.shape[-1] + sched.shape[-1]] = sched
-    ctrl_sched[:,pre.shape[-1] + sched.shape[-1]:] = np.ma.masked
+    ctrl_sched[:,:b_s] = np.ma.masked
+    ctrl_sched[:,b_s:b_e] = sched[:,b_s:b_e]
+    ctrl_sched[:,b_e:] = np.ma.masked
 
     # plot_each_device(sc, unctrl, ctrl, sched)
     minutes = (sc.t_end - sc.t_start).total_seconds() / 60

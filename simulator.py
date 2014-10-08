@@ -244,16 +244,16 @@ def run_state(sc):
             sc.state_files_ctrl[aid] = tmpf.name
         except IndexError:
             # Schedule not found in sample, device keeps its initial (uncontrolled) schedule
-            b_start, b_end = sc.t_block_start, sc.t_block_end
+            t_start, b_start, b_end = sc.t_start, sc.t_block_start, sc.t_block_end
             div = 1
-            if (b_end - b_start).total_seconds() / 60 == sched.shape[-1] * 15:
+            if (b_end - t_start).total_seconds() / 60 == sched.shape[-1] * 15:
                 div = 15
-            elif (b_end - b_start).total_seconds() / 60 == sched.shape[-1] * 60:
+            elif (b_end - t_start).total_seconds() / 60 == sched.shape[-1] * 60:
                 div = 60
-            b_s = (b_start - sc.t_start).total_seconds() / 60 / div
+            # b_s = (b_start - sc.t_start).total_seconds() / 60 / div
             b_e = (b_end - sc.t_start).total_seconds() / 60 / div
             unctrl = np.load(os.path.join(basedir, sc.run_unctrl_datafile))
-            sim_data[aid] = unctrl[aid][:,b_s:b_e]
+            sim_data[aid] = unctrl[aid][:,:b_e]
             sc.state_files_ctrl[aid] = sc.state_files_unctrl[aid]
     print()
     return sim_data

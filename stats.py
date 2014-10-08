@@ -50,25 +50,36 @@ def stats(fn):
     print(sc.title)
 
     unctrl = load(p(bd, sc.run_unctrl_datafile))
-    pre = load(p(bd, sc.run_pre_datafile))
+
+    print('mean load: %.2f kW' % (unctrl[:,0,:].sum(0).mean() / 1000.0))
+    sys.exit(0)
+
     block = load(p(bd, sc.run_ctrl_datafile))
     post = load(p(bd, sc.run_post_datafile))
     sched = load(p(bd, sc.sched_file))
 
     ctrl = np.zeros(unctrl.shape)
     idx = 0
-    for l in (pre, block, post):
+    for l in (block, post):
         ctrl[:,:,idx:idx + l.shape[-1]] = l
         idx += l.shape[-1]
 
     if sched.shape[-1] == unctrl.shape[-1] / 15:
         print('Extending schedules shape by factor 15')
         sched = sched.repeat(15, axis=1)
+    t_start, b_start, b_end = sc.t_start, sc.t_block_start, sc.t_block_end
+    div = 1
+    if (b_end - t_start).total_seconds() / 60 == sched.shape[-1] * 15:
+        div = 15
+    elif (b_end - t_start).total_seconds() / 60 == sched.shape[-1] * 60:
+        div = 60
+    b_s = (b_start - sc.t_start).total_seconds() / 60 / div
+    b_e = (b_end - sc.t_start).total_seconds() / 60 / div
     ctrl_sched = np.zeros((unctrl.shape[0], unctrl.shape[-1]))
     ctrl_sched = np.ma.array(ctrl_sched)
-    ctrl_sched[:,:pre.shape[-1]] = np.ma.masked
-    ctrl_sched[:,pre.shape[-1]:pre.shape[-1] + sched.shape[-1]] = sched
-    ctrl_sched[:,pre.shape[-1] + sched.shape[-1]:] = np.ma.masked
+    ctrl_sched[:,:b_s] = np.ma.masked
+    ctrl_sched[:,b_s:b_e] = sched[:,b_s:b_e]
+    ctrl_sched[:,b_e:] = np.ma.masked
 
     # plot_each_device(sc, unctrl, ctrl, sched)
     minutes = (sc.t_end - sc.t_start).total_seconds() / 60
@@ -264,13 +275,13 @@ if __name__ == '__main__':
                             syncs):
                 l.append(d)
 
-    fig = plot_stats(names, target_sched, target_ctrl, target_unctrl,
-                     sched_ctrl, sched_unctrl, unctrl_ctrl)
-    fig.savefig(p(os.path.split(dn)[0], 'stats.pdf'))
-    import matplotlib.pyplot as plt
-    plt.show()
+    # fig = plot_stats(names, target_sched, target_ctrl, target_unctrl,
+    #                  sched_ctrl, sched_unctrl, unctrl_ctrl)
+    # fig.savefig(p(os.path.split(dn)[0], 'stats.pdf'))
+    # import matplotlib.pyplot as plt
+    # plt.show()
 
-    fig = plot_syncs(names, sync_block_start, sync_block_end, sync_day_end,
-                     sync_sim_end)
-    fig.savefig(p(os.path.split(dn)[0], 'sync.pdf'))
-    plt.show()
+    # fig = plot_syncs(names, sync_block_start, sync_block_end, sync_day_end,
+    #                  sync_sim_end)
+    # fig.savefig(p(os.path.split(dn)[0], 'sync.pdf'))
+    # plt.show()

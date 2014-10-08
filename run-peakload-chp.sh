@@ -8,7 +8,7 @@ abort() {
 }
 
 SC='{
-  "title": "Peakload-50-CHP-small-flex",
+  "title": "Peakload-60-CHP-smaller-flex",
   "seed": 0,
   "sample_size": 200,
   "t_pre": [2010, 3, 25],
@@ -19,9 +19,9 @@ SC='{
   "objective": "epex",
   "block": [100000],
   "device_templates": [
-    ["Vaillant EcoPower 1.0", 50],
-    ["Vaillant EcoPower 3.0", 0],
-    ["Vaillant EcoPower 4.7", 0],
+    ["Vaillant EcoPower 1.0", 5],
+    ["Vaillant EcoPower 3.0", 5],
+    ["Vaillant EcoPower 4.7", 50],
     ["Vaillant EcoPower 20.0", 0],
     ["Stiebel Eltron WPF 5", 0],
     ["Stiebel Eltron WPF 7", 0],

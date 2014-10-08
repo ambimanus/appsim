@@ -31,7 +31,7 @@ abort() {
 #     Block Early Afternoon covering hours 13 to 1
 
 SC='{
-  "title": "Spreadreduce-SLP-50-CHP",
+  "title": "Spreadreduce-SLP-12-CHP",
   "seed": 0,
   "sample_size": 200,
   "t_pre": [2010, 3, 25],
@@ -41,10 +41,10 @@ SC='{
   "t_end": [2010, 4, 4],
   "objective": "spreadreduce-slp",
   "device_templates": [
-    ["Vaillant EcoPower 1.0", 10],
-    ["Vaillant EcoPower 3.0", 15],
-    ["Vaillant EcoPower 4.7", 15],
-    ["Vaillant EcoPower 20.0", 10],
+    ["Vaillant EcoPower 1.0", 4],
+    ["Vaillant EcoPower 3.0", 0],
+    ["Vaillant EcoPower 4.7", 8],
+    ["Vaillant EcoPower 20.0", 0],
     ["Stiebel Eltron WPF 5", 0],
     ["Stiebel Eltron WPF 7", 0],
     ["Stiebel Eltron WPF 10", 0],

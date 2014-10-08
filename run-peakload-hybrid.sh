@@ -8,7 +8,7 @@ abort() {
 }
 
 SC='{
-  "title": "Peakload-130-hybrid-doublesampler",
+  "title": "Peakload-123-hybrid",
   "seed": 0,
   "sample_size": 200,
   "t_pre": [2010, 3, 25],
@@ -17,15 +17,15 @@ SC='{
   "t_block_end": [2010, 4, 2, 20],
   "t_end": [2010, 4, 4],
   "objective": "epex",
-  "block": [100000],
+  "block": [-100000],
   "device_templates": [
-    ["Vaillant EcoPower 1.0", 0],
+    ["Vaillant EcoPower 1.0", 4],
     ["Vaillant EcoPower 3.0", 0],
-    ["Vaillant EcoPower 4.7", 80],
-    ["Vaillant EcoPower 20.0", 20],
-    ["Stiebel Eltron WPF 5", 30],
+    ["Vaillant EcoPower 4.7", 8],
+    ["Vaillant EcoPower 20.0", 0],
+    ["Stiebel Eltron WPF 5", 0],
     ["Stiebel Eltron WPF 7", 0],
-    ["Stiebel Eltron WPF 10", 0],
+    ["Stiebel Eltron WPF 10", 111],
     ["Stiebel Eltron WPF 13", 0],
     ["Weishaupt WWP S 24", 0],
     ["Weishaupt WWP S 30", 0],

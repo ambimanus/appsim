@@ -383,7 +383,6 @@ def run(sc_file):
     # sys.exit(0)
 
     unctrl = load(p(bd, sc.run_unctrl_datafile))
-    # pre = load(p(bd, sc.run_pre_datafile))
     block = load(p(bd, sc.run_ctrl_datafile))
     post = load(p(bd, sc.run_post_datafile))
     sched = load(p(bd, sc.sched_file))

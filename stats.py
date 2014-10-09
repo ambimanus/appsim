@@ -51,9 +51,6 @@ def stats(fn):
 
     unctrl = load(p(bd, sc.run_unctrl_datafile))
 
-    print('mean load: %.2f kW' % (unctrl[:,0,:].sum(0).mean() / 1000.0))
-    sys.exit(0)
-
     block = load(p(bd, sc.run_ctrl_datafile))
     post = load(p(bd, sc.run_post_datafile))
     sched = load(p(bd, sc.sched_file))

@@ -64,6 +64,14 @@ def plot_aggregated(sc, bd, unctrl, ctrl, ctrl_sched, res=1):
     P_el_ctrl = ctrl[:,0,skip:].sum(0)
     P_el_sched = ctrl_sched[:,skip:].sum(0)
 
+    P_el_target = np.ma.array(P_el_sched)
+    block = np.array(sc.block)
+    if block.shape == (1,):
+        block = block.repeat(P_el_target[~P_el_target.mask].shape[0])
+    elif block.shape[0] == P_el_target[~P_el_target.mask].shape[0] / 15:
+        block = block.repeat(15)
+    P_el_target[~P_el_target.mask] = block
+
     T_storage_ctrl = ctrl[:,2,skip:]
 
     ft = np.array([t[0]] + list(np.repeat(t[1:-1], 2)) + [t[-1]])
@@ -88,7 +96,8 @@ def plot_aggregated(sc, bd, unctrl, ctrl, ctrl_sched, res=1):
     l_ctrl = ax[0].fill_between(ft, P_el_ctrl_fill / 1000.0, facecolors=PRIM+(0.5,), edgecolors=EC, lw=0.0)
     # Create proxy artist as l_ctrl legend handle
     l_ctrl_proxy = Rectangle((0, 0), 1, 1, fc=PRIM, ec=WHITE, lw=0.0, alpha=0.5)
-    l_sched, = ax[0].plot_date(t, P_el_sched / 1000.0, fmt='-', color=PRIM, drawstyle='steps-post', lw=0.75)
+    # l_sched, = ax[0].plot_date(t, P_el_sched / 1000.0, fmt='-', color=PRIM, drawstyle='steps-post', lw=0.75)
+    l_target, = ax[0].plot_date(t, P_el_target / 1000.0, fmt='-', color=PRIM, drawstyle='steps-post', lw=0.5)
 
     # colors = [
     #                 '#348ABD', # blue
@@ -130,8 +139,8 @@ def plot_aggregated(sc, bd, unctrl, ctrl, ctrl_sched, res=1):
     ax[0].xaxis.get_major_formatter().scaled[1/24.] = '%H:%M'
     ax[-1].set_xlabel('Tageszeit')
     fig.autofmt_xdate()
-    ax[1].legend([l_sched, l_unctrl, l_ctrl_proxy, l_T_med_CHP],
-                 ['Verbundfahrplan', 'ungesteuert', 'gesteuert', 'Speichertemperaturen (Mittelwert)'],
+    ax[1].legend([l_target, l_unctrl, l_ctrl_proxy, l_T_med_CHP],
+                 ['Zielvorgabe', 'ungesteuert', 'gesteuert', 'Speichertemperaturen (Mittelwert)'],
                  bbox_to_anchor=(0., 1.03, 1., .103), loc=8, ncol=4,
                  handletextpad=0.2, mode='expand', handlelength=3,
                  borderaxespad=0.25, fancybox=False, fontsize='x-small')

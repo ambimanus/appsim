@@ -192,13 +192,13 @@ def plot_aggregated_SLP(sc, bd, unctrl, ctrl, ctrl_sched, res=1):
     xspace = (t[-1] - t[-2])
     ax[0].set_xlim(t[0], t[-1] + xspace)
 
-    l_unctrl, = ax[0].plot_date(t, P_el_unctrl / 1000.0, fmt='-', color=PRIMB, drawstyle='steps-post', lw=0.5, label='ungesteuert')
-    # l_unctrl.set_dashes([1.0, 1.0])
+    l_unctrl, = ax[0].plot_date(t, P_el_unctrl / 1000.0, fmt=':', color=PRIMB, drawstyle='steps-post', lw=0.75, label='ungesteuert')
+    l_unctrl.set_dashes([1.0, 1.0])
     # add lw=0.0 due to bug in mpl (will show as hairline in pdf though...)
     l_ctrl = ax[0].fill_between(ft, P_el_ctrl_fill / 1000.0, facecolors=PRIM+(0.5,), edgecolors=EC, lw=0.0)
     # Create proxy artist as l_ctrl legend handle
     l_ctrl_proxy = Rectangle((0, 0), 1, 1, fc=PRIM, ec=WHITE, lw=0.0, alpha=0.5)
-    l_sched, = ax[0].plot_date(t, P_el_sched / 1000.0, fmt='-', color=PRIM, drawstyle='steps-post', lw=0.75, label='gesteuert')
+    # l_sched, = ax[0].plot_date(t, P_el_sched / 1000.0, fmt='-', color=PRIM, drawstyle='steps-post', lw=0.75, label='gesteuert')
 
     # colors = [
     #                 '#348ABD', # blue
@@ -227,7 +227,13 @@ def plot_aggregated_SLP(sc, bd, unctrl, ctrl, ctrl_sched, res=1):
     ax[1].set_ylabel('T$_{\mathrm{storage}}\;[^{\circ}\mathrm{C}]$', labelpad=9)
     for v in T_storage_ctrl:
         ax[1].plot_date(t, v - 273.0, fmt='-', color=PRIMA, alpha=0.25, lw=0.5)
-    l_T_med, = ax[1].plot_date(t, T_storage_ctrl.mean(0) - 273.0, fmt='-', color=PRIMA, alpha=0.75, lw=1.5, label='Mittelwert')
+    # HP and CHP have different temperature ranges (HP: 40-50, CHP: 50-70)
+    crit = (T_storage_ctrl - 273 >= 50).all(axis=1)
+    T_CHP = T_storage_ctrl[crit]
+    T_HP = T_storage_ctrl[~crit]
+    l_T_med_CHP, = ax[1].plot_date(t, T_CHP.mean(0) - 273.0, fmt='-', color=PRIMA, alpha=0.75, lw=1.5, label='Mittelwert')
+    l_T_med_HP, = ax[1].plot_date(t, T_HP.mean(0) - 273.0, fmt='-', color=PRIMA, alpha=0.75, lw=1.5)
+    # l_T_med, = ax[1].plot_date(t, T_storage_ctrl.mean(0) - 273.0, fmt='-', color=PRIMA, alpha=0.75, lw=1.5, label='Mittelwert')
     # l_T_med, = ax[1].plot_date(t, np.median(T_storage_ctrl, 0) - 273.0, fmt='-', color=PRIMA, alpha=0.75, lw=1.5, label='Median')
 
     ax[2].set_ylabel('P$_{el}$ [kW]')
@@ -250,8 +256,8 @@ def plot_aggregated_SLP(sc, bd, unctrl, ctrl, ctrl_sched, res=1):
              fontsize='small', transform=ax[1].transAxes)
     ax[2].text(0.5, 1.05, 'Tageslastprofil', ha='center', va='center',
              fontsize='small', transform=ax[2].transAxes)
-    ax[0].legend(loc='lower right', fancybox=False, fontsize='x-small')
-    ax[1].legend(loc='lower right', fancybox=False, fontsize='x-small')
+    ax[0].legend([l_unctrl, l_ctrl_proxy], ['ungesteuert', 'gesteuert'], loc='upper right', fancybox=False, fontsize='x-small')
+    ax[1].legend(loc='upper right', fancybox=False, fontsize='x-small')
     ax[2].legend(loc='upper right', fancybox=False, fontsize='x-small')
 
     fig.autofmt_xdate()

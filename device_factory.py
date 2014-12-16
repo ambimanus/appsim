@@ -79,11 +79,17 @@ def rf_100(seed, id):
         P_min=-10000, P_max=10000)
 
 
+def ecopower_4_preset(seed, id):
+    from chpsim.preset import vaillant_47_nord
+    return vaillant_47_nord(id, name='chp', seed=seed)
+
+
 CHP_MODELS = {
     'Vaillant EcoPower 1.0': ecopower_1,
     'Vaillant EcoPower 3.0': ecopower_3,
     'Vaillant EcoPower 4.7': ecopower_4,
     'Vaillant EcoPower 20.0': ecopower_20,
+    'Vaillant EcoPower 4.7 (preset)': ecopower_4_preset,
 }
 
 HP_MODELS = {
@@ -105,14 +111,9 @@ def create_heater(seed, id, model, T_min, T_max, storage_weight, storage_loss,
                   annual_demand, P_noise, S_noise, D_noise, T_noise):
     if model in list(CHP_MODELS.keys()):
         # Erstelle BHKW
-        if model == 'Vaillant EcoPower 1.0':
-            device = Device('chp', id, [Converter(), HeatDemand(), Storage(),
-                    chp.Engine(), Scheduler(), chp.BoostHeater(),
-                    SuccessiveSampler()], seed=seed)
-        else:
-            device = Device('chp', id, [Converter(), HeatDemand(), Storage(),
-                    chp.Engine(), Scheduler(), chp.BoostHeater(),
-                    SuccessiveSampler()], seed=seed)
+        device = Device('chp', id, [Converter(), HeatDemand(), Storage(),
+                chp.Engine(), Scheduler(), chp.BoostHeater(),
+                SuccessiveSampler()], seed=seed)
         # Minimale Verweilzeit je gefahrenem Betriebsmodus
         device.components.engine.min_step_duration = 60
         # initiale Werte für Verlaufs-Schätzer
@@ -120,9 +121,6 @@ def create_heater(seed, id, model, T_min, T_max, storage_weight, storage_loss,
         # device.components.engine.T_delta = 0
     elif model in list(HP_MODELS.keys()):
         # Erstelle Wärmepumpe
-        # device = Device('heatpump', id, [Converter(), HeatDemand(),
-        #         hp.RandomHeatSource(), Storage(), hp.Engine(), Scheduler(),
-        #         chp.BoostHeater(), SuccessiveSampler()], seed=seed)
         device = Device('heatpump', id, [Converter(), HeatDemand(),
                 hp.RandomHeatSource(), Storage(), hp.Engine(), Scheduler(),
                 chp.BoostHeater(), SuccessiveSampler()], seed=seed)

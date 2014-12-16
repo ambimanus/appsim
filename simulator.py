@@ -20,26 +20,31 @@ def simulate(device, start, end, progress, newline=False):
     data = np.zeros((len(headers), end - start))
 
     # Simulation
-    if device.typename == 'battery':
-        for now in range(start, end):
-            device.step(now)
-            i = now - start
-            data[0][i] = device.components.consumer.P
-            data[1][i] = None
-            data[2][i] = device.components.battery.E / 1000
-            data[3][i] = None
-            progress.update()
-    else:
-        for now in range(start, end):
-            device.step(now)
-            i = now - start
-            data[0][i] = device.components.engine.P_el
-            if hasattr(device.components, 'boost_heater'):
+    # if device.typename == 'battery':
+    #     for now in range(start, end):
+    #         device.step(now)
+    #         i = now - start
+    #         data[0][i] = device.components.consumer.P
+    #         data[1][i] = None
+    #         data[2][i] = device.components.battery.E / 1000
+    #         data[3][i] = None
+    #         progress.update()
+    # else:
+    for now in range(start, end):
+        device.step(now)
+        i = now - start
+        data[0][i] = device.components.converter.P
+        if hasattr(device.components, 'boost_heater'):
+            if device.typename == 'chp':
+                # the boost heater is a consumer, so substract its power
+                data[0][i] -= device.components.boost_heater.P_el
+            elif device.typename == 'hp':
+                # the power array will be negated below, so just add the power
                 data[0][i] += device.components.boost_heater.P_el
-            data[1][i] = device.components.engine.P_th
-            data[2][i] = device.components.storage.T
-            data[3][i] = device.components.heatsink.T_env
-            progress.update()
+        data[1][i] = device.components.engine.P_th
+        data[2][i] = device.components.storage.T
+        data[3][i] = device.components.heatsink.T_env
+        progress.update()
 
     if device.typename == 'heatpump':
         # This is a consumer, so negate P_el

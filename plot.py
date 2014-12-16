@@ -82,9 +82,10 @@ def run(sc_file):
     sc.load_JSON(sc_file)
     print(sc.title)
 
-    fig = plot_samples(sc, bd)
-    fig.savefig('.'.join((os.path.join(bd, sc.title), str(sc.seed), 'samples', 'pdf')))
-    fig.savefig('.'.join((os.path.join(bd, sc.title), str(sc.seed), 'samples', 'png')), dpi=300)
+    if sc.sample_size > 0:
+        fig = plot_samples(sc, bd)
+        fig.savefig('.'.join((os.path.join(bd, sc.title), str(sc.seed), 'samples', 'pdf')))
+        fig.savefig('.'.join((os.path.join(bd, sc.title), str(sc.seed), 'samples', 'png')), dpi=300)
 
     fig = plot_aggregated(sc, bd)
     fig.savefig('.'.join((os.path.join(bd, sc.title), str(sc.seed), 'pdf')))

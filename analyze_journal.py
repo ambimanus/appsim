@@ -56,7 +56,7 @@ def plot_aggregated(sc, bd, unctrl, ctrl, ctrl_sched, res=1):
     P_el_ctrl_fill = np.repeat(P_el_ctrl[:-1], 2)
 
     fig, ax = plt.subplots(2, sharex=True)
-    fig.subplots_adjust(left=0.09, right=0.998, hspace=0.3, top=0.998, bottom=0.2)
+    fig.subplots_adjust(left=0.105, right=0.998, hspace=0.3, top=0.975, bottom=0.2)
     for a in ax:
         plt.setp(list(a.spines.values()), color='k')
         plt.setp([a.get_xticklines(), a.get_yticklines()], color='k')
@@ -65,12 +65,13 @@ def plot_aggregated(sc, bd, unctrl, ctrl, ctrl_sched, res=1):
     ymin = min(P_el_unctrl.min(), P_el_ctrl_fill.min(), P_el_sched.min(), 0) / 1000.0
     ax[0].set_ylim(ymin - abs(ymin * 0.1), ymax + abs(ymax * 0.1))
     xspace = (t[-1] - t[-2])
-    ax[0].set_xlim(t[0], t[-1] + xspace)
+    # ax[0].set_xlim(t[0], t[-1] + xspace)
+    ax[0].set_xlim(t[0], t[len(t)/2])
     # ax[0].axvline(t[i_block_start], ls='--', color='0.5')
     # ax[0].axvline(t[i_block_end], ls='--', color='0.5')
     ax[0].axvspan(t[i_block_start], t[i_block_end], fc=GRAY+(0.2,), ec=EC)
-    ax[0].axvline(t[0], ls='-', color=GRAY, lw=0.5)
-    ax[0].axvline(t[len(t)/2], ls='-', color=GRAY, lw=0.5)
+    # ax[0].axvline(t[0], ls='-', color=GRAY, lw=0.5)
+    # ax[0].axvline(t[len(t)/2], ls='-', color=GRAY, lw=0.5)
     l_unctrl, = ax[0].plot_date(t, P_el_unctrl / 1000.0, fmt=':', color='k', drawstyle='steps-post', lw=0.75)
     l_unctrl.set_dashes([1.0, 1.0])
     # add lw=0.0 due to bug in mpl (will show as hairline in pdf though...)
@@ -106,8 +107,8 @@ def plot_aggregated(sc, bd, unctrl, ctrl, ctrl_sched, res=1):
     ax[1].set_ylim(ymin - abs(ymin * 0.01), ymax + abs(ymax * 0.01))
     ax[1].set_ylabel('T$_{\mathrm{storage}}\;[^{\circ}\mathrm{C}]$', labelpad=9)
     ax[1].axvspan(t[i_block_start], t[i_block_end], fc=GRAY+(0.1,), ec=EC)
-    ax[1].axvline(t[0], ls='-', color=GRAY, lw=0.5)
-    ax[1].axvline(t[len(t)/2], ls='-', color=GRAY, lw=0.5)
+    # ax[1].axvline(t[0], ls='-', color=GRAY, lw=0.5)
+    # ax[1].axvline(t[len(t)/2], ls='-', color=GRAY, lw=0.5)
     for v in T_storage_ctrl:
         ax[1].plot_date(t, v - 273.0, fmt='-', color=GRAY, alpha=0.25, lw=0.5)
     # HP and CHP have different temperature ranges (HP: 40-50, CHP: 50-70)
